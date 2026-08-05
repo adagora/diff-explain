@@ -1,0 +1,17 @@
+[
+  {
+    "name": "full",
+    "elision_input": "kept 2/9 changed lines in 1/3 files",
+    "output": "{\"smart_diff\":\"@@ -1 +1 @@\\n-a\\n+b\\n\",\"summary\":\"swap a for b\",\"input_tokens\":120,\"output_tokens\":34,\"elision\":\"kept 2/9 changed lines in 1/3 files\"}\n"
+  },
+  {
+    "name": "no-elision",
+    "elision_input": "",
+    "output": "{\"smart_diff\":\"\",\"summary\":\"No changes.\",\"input_tokens\":0,\"output_tokens\":0}\n"
+  },
+  {
+    "name": "html-and-multibyte",
+    "elision_input": "elided all 4 changed lines in 1 files",
+    "output": "{\"smart_diff\":\"+if a < b && c > d {\\n\",\"summary\":\"guard <html> & 日本語\",\"input_tokens\":1,\"output_tokens\":2,\"elision\":\"elided all 4 changed lines in 1 files\"}\n"
+  }
+]

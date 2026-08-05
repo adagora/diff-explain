@@ -1,0 +1,159 @@
+  1|diff --git a/src/_pytest/config/__init__.py b/src/_pytest/config/__init__.py
+  2|index 3a10c3aa8..e08fc41d3 100644
+  3|--- a/src/_pytest/config/__init__.py
+  4|+++ b/src/_pytest/config/__init__.py
+  5|@@ -1199,9 +1199,43 @@ class Config:
+  6|         """
+  7|         self._cleanup_stack.callback(func)
+  8| 
+  9|+    @contextlib.contextmanager
+ 10|+    def _catch_configured_warnings(
+ 11|+        self,
+ 12|+        *,
+ 13|+        record: bool,
+ 14|+    ) -> Generator[list[warnings.WarningMessage] | None]:
+ 15|+        """Apply configured filters in a warnings-catching context.
+ 16|+
+ 17|+        Defined here instead of _pytest.warnings as _do_configure uses
+ 18|+        it before the warnings module's pytest_configure hook runs, and
+ 19|+        defining it there would create an import cycle.
+ 20|+        """
+ 21|+        config_filters = self.getini("filterwarnings")
+ 22|+        cmdline_filters = self.known_args_namespace.pythonwarnings or []
+ 23|+        with warnings.catch_warnings(record=record) as log:
+ 24|+            if not sys.warnoptions:
+ 25|+                # If user is not explicitly configuring warning filters, show deprecation warnings by default (#2908).
+ 26|+                warnings.filterwarnings("always", category=DeprecationWarning)
+ 27|+                warnings.filterwarnings("always", category=PendingDeprecationWarning)
+ 28|+
+ 29|+            # To be enabled in pytest 10.0.0.
+ 30|+            # warnings.filterwarnings("error", category=pytest.PytestRemovedIn10Warning)
+ 31|+
+ 32|+            apply_warning_filters(config_filters, cmdline_filters)
+ 33|+            yield log
+ 34|+
+ 35|     def _do_configure(self) -> None:
+ 36|         assert not self._configured
+ 37|         self._configured = True
+ 38|+        if self.pluginmanager.hasplugin("warnings"):
+ 39|+            with contextlib.ExitStack() as stack:
+ 40|+                # this disables recording because the terminalreporter has
+ 41|+                # finished by the time it comes to reporting logged warnings
+ 42|+                # from the end of config cleanup. So for now, this is only
+ 43|+                # useful for setting a warning filter with an 'error' action.
+ 44|+                stack.enter_context(self._catch_configured_warnings(record=False))
+ 45|+                self.add_cleanup(stack.pop_all().close)
+ 46|         self.hook.pytest_configure.call_historic(kwargs=dict(config=self))
+ 47| 
+ 48|     def _ensure_unconfigure(self) -> None:
+ 49|diff --git a/src/_pytest/warnings.py b/src/_pytest/warnings.py
+ 50|index d599d6c27..2c721d6e3 100644
+ 51|--- a/src/_pytest/warnings.py
+ 52|+++ b/src/_pytest/warnings.py
+ 53|@@ -3,12 +3,9 @@ from __future__ import annotations
+ 54| 
+ 55| from collections.abc import Generator
+ 56| from contextlib import contextmanager
+ 57|-from contextlib import ExitStack
+ 58|-import sys
+ 59| from typing import Literal
+ 60| import warnings
+ 61| 
+ 62|-from _pytest.config import apply_warning_filters
+ 63| from _pytest.config import Config
+ 64| from _pytest.config import parse_warning_filter
+ 65| from _pytest.main import Session
+ 66|@@ -33,19 +30,7 @@ def catch_warnings_for_item(
+ 67| 
+ 68|     Each warning captured triggers the ``pytest_warning_recorded`` hook.
+ 69|     """
+ 70|-    config_filters = config.getini("filterwarnings")
+ 71|-    cmdline_filters = config.known_args_namespace.pythonwarnings or []
+ 72|-    with warnings.catch_warnings(record=record) as log:
+ 73|-        if not sys.warnoptions:
+ 74|-            # If user is not explicitly configuring warning filters, show deprecation warnings by default (#2908).
+ 75|-            warnings.filterwarnings("always", category=DeprecationWarning)
+ 76|-            warnings.filterwarnings("always", category=PendingDeprecationWarning)
+ 77|-
+ 78|-        # To be enabled in pytest 10.0.0.
+ 79|-        # warnings.filterwarnings("error", category=pytest.PytestRemovedIn10Warning)
+ 80|-
+ 81|-        apply_warning_filters(config_filters, cmdline_filters)
+ 82|-
+ 83|+    with config._catch_configured_warnings(record=record) as log:
+ 84|         # apply filters from "filterwarnings" marks
+ 85|         nodeid = "" if item is None else item.nodeid
+ 86|         if item is not None:
+ 87|@@ -130,23 +115,8 @@ def pytest_load_initial_conftests(
+ 88| 
+ 89| 
+ 90| def pytest_configure(config: Config) -> None:
+ 91|-    with ExitStack() as stack:
+ 92|-        stack.enter_context(
+ 93|-            catch_warnings_for_item(
+ 94|-                config=config,
+ 95|-                ihook=config.hook,
+ 96|-                when="config",
+ 97|-                item=None,
+ 98|-                # this disables recording because the terminalreporter has
+ 99|-                # finished by the time it comes to reporting logged warnings
+100|-                # from the end of config cleanup. So for now, this is only
+101|-                # useful for setting a warning filter with an 'error' action.
+102|-                record=False,
+103|-            )
+104|-        )
+105|-        config.addinivalue_line(
+106|-            "markers",
+107|-            "filterwarnings(warning): add a warning filter to the given test. "
+108|-            "see https://docs.pytest.org/en/stable/how-to/capture-warnings.html#pytest-mark-filterwarnings ",
+109|-        )
+110|-        config.add_cleanup(stack.pop_all().close)
+111|+    config.addinivalue_line(
+112|+        "markers",
+113|+        "filterwarnings(warning): add a warning filter to the given test. "
+114|+        "see https://docs.pytest.org/en/stable/how-to/capture-warnings.html#pytest-mark-filterwarnings ",
+115|+    )
+116|diff --git a/testing/test_warnings.py b/testing/test_warnings.py
+117|index e2363bd88..6b439eb4b 100644
+118|--- a/testing/test_warnings.py
+119|+++ b/testing/test_warnings.py
+120|@@ -700,6 +700,39 @@ def test_pytest_configure_warning(pytester: Pytester, recwarn) -> None:
+121|     assert str(warning.message) == "from pytest_configure"
+122| 
+123| 
+124|+@pytest.mark.parametrize("tryfirst", [True, False])
+125|+def test_pytest_configure_warning_filter(pytester: Pytester, tryfirst: bool) -> None:
+126|+    """Issue 10128.
+127|+
+128|+    Parametrize over ``tryfirst`` to guard against hooks that run early
+129|+    from avoiding the filterwarnings configuration.
+130|+    """
+131|+    pytester.makeini(
+132|+        """
+133|+        [pytest]
+134|+        filterwarnings =
+135|+            ignore::UserWarning
+136|+        """
+137|+    )
+138|+    pytester.makeconftest(
+139|+        f"""
+140|+        import warnings
+141|+        import pytest
+142|+
+143|+        @pytest.hookimpl(tryfirst={tryfirst})
+144|+        def pytest_configure():
+145|+            warnings.warn("from pytest_configure", UserWarning)
+146|+        """
+147|+    )
+148|+    pytester.makepyfile("def test_it(): pass")
+149|+
+150|+    result = pytester.runpytest_subprocess()
+151|+
+152|+    result.assert_outcomes(passed=1)
+153|+    result.stdout.no_fnmatch_line("*from pytest_configure*")
+154|+    result.stderr.no_fnmatch_line("*from pytest_configure*")
+155|+
+156|+
+157| class TestStackLevel:
+158|     @pytest.fixture
+159|     def capwarn(self, pytester: Pytester):

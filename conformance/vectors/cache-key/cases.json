@@ -1,0 +1,44 @@
+[
+  {
+    "name": "empty",
+    "diff": "",
+    "model": "",
+    "rubric": "",
+    "key": "96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+  },
+  {
+    "name": "simple",
+    "diff": "diff --git a/x b/x\n",
+    "model": "gpt-5",
+    "rubric": "abcd1234",
+    "key": "cebbc29e2154df496fead09a1b9f4496a1369967c3bfdc39d074aa888041d2b6"
+  },
+  {
+    "name": "multibyte",
+    "diff": "+// naïve — 日本語\n",
+    "model": "claude-opus-4-8",
+    "rubric": "abcd1234",
+    "key": "5c6cfec4c5469e02862dbb8a567047acced24475c29a268c889d30d8b2e281b6"
+  },
+  {
+    "name": "separator-sensitivity-a",
+    "diff": "b",
+    "model": "a",
+    "rubric": "",
+    "key": "3d64310d8364dfb1b0070f0c7ab813c2ed68ec750463847dbff0a5fc0e9d3af4"
+  },
+  {
+    "name": "separator-sensitivity-b",
+    "diff": "",
+    "model": "a",
+    "rubric": "b",
+    "key": "573bd924ba58a67c2894994f1a02369b24ba45dd3de0a508b4a45795bd3166f4"
+  },
+  {
+    "name": "live-rubric",
+    "diff": "diff --git a/x b/x\n",
+    "model": "gpt-5.6-sol",
+    "rubric": "441f5e6e28ad3add",
+    "key": "a852188ba0252bc309272c79b1843ba31676d62efbfbd5b858923b100bf757ad"
+  }
+]

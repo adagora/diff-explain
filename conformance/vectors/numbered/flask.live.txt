@@ -1,0 +1,178 @@
+  1|diff --git a/src/flask/app.py b/src/flask/app.py
+  2|index c6dd7833..cc326dbe 100644
+  3|--- a/src/flask/app.py
+  4|+++ b/src/flask/app.py
+  5|@@ -1318,8 +1318,8 @@ class Flask(App):
+  6|                 for func in reversed(self.after_request_funcs[name]):
+  7|                     response = self.ensure_sync(func)(response)
+  8|-        if not self.session_interface.is_null_session(ctx.session):
+  9|-            self.session_interface.save_session(self, ctx.session, response)
+ 10|+        if not self.session_interface.is_null_session(ctx._session):
+ 11|+            self.session_interface.save_session(self, ctx._session, response)
+ 12| 
+ 13|diff --git a/src/flask/ctx.py b/src/flask/ctx.py
+ 14|index 222e818e..5f7b1f1d 100644
+ 15|--- a/src/flask/ctx.py
+ 16|+++ b/src/flask/ctx.py
+ 17|@@ -324,7 +324,7 @@ class RequestContext:
+ 18|         except HTTPException as e:
+ 19|             self.request.routing_exception = e
+ 20|         self.flashes: list[tuple[str, str]] | None = None
+ 21|-        self.session: SessionMixin | None = session
+ 22|+        self._session: SessionMixin | None = session
+ 23|@@ -351,7 +351,7 @@ class RequestContext:
+ 24|             self.app,
+ 25|             environ=self.request.environ,
+ 26|             request=self.request,
+ 27|-            session=self.session,
+ 28|+            session=self._session,
+ 29|         )
+ 30|@@ -364,6 +364,16 @@ class RequestContext:
+ 31|         except HTTPException as e:
+ 32|             self.request.routing_exception = e
+ 33|+    @property
+ 34|+    def session(self) -> SessionMixin:
+ 35|+        """The session data associated with this request. Not available until
+ 36|+        this context has been pushed. Accessing this property, also accessed by
+ 37|+        the :data:`~flask.session` proxy, sets :attr:`.SessionMixin.accessed`.
+ 38|+        """
+ 39|+        assert self._session is not None, "The session has not yet been opened."
+ 40|+        self._session.accessed = True
+ 41|+        return self._session
+ 42|+
+ 43|@@ -381,12 +391,12 @@ class RequestContext:
+ 44|         # This allows a custom open_session method to use the request context.
+ 45|         # Only open a new session if this is the first time the request was
+ 46|         # pushed, otherwise stream_with_context loses the session.
+ 47|-        if self.session is None:
+ 48|+        if self._session is None:
+ 49|             session_interface = self.app.session_interface
+ 50|-            self.session = session_interface.open_session(self.app, self.request)
+ 51|+            self._session = session_interface.open_session(self.app, self.request)
+ 52| 
+ 53|-            if self.session is None:
+ 54|-                self.session = session_interface.make_null_session(self.app)
+ 55|+            if self._session is None:
+ 56|+                self._session = session_interface.make_null_session(self.app)
+ 57| 
+ 58|diff --git a/src/flask/sessions.py b/src/flask/sessions.py
+ 59|index 1841d882..ad357706 100644
+ 60|--- a/src/flask/sessions.py
+ 61|+++ b/src/flask/sessions.py
+ 62|@@ -43,10 +43,15 @@ class SessionMixin(MutableMapping[str, t.Any]):
+ 63|     #: ``True``.
+ 64|     modified = True
+ 65| 
+ 66|+    accessed = False
+ 67|+    """Indicates if the session was accessed, even if it was not modified. This
+ 68|+    is set when the session object is accessed through the request context,
+ 69|+    including the global :data:`.session` proxy. A ``Vary: cookie`` header will
+ 70|+    be added if this is ``True``.
+ 71|+
+ 72|+    .. versionchanged:: 3.1.3
+ 73|+        This is tracked by the request context.
+ 74|+    """
+ 75| 
+ 76| 
+ 77| class SecureCookieSession(CallbackDict[str, t.Any], SessionMixin):
+ 78|@@ -65,34 +70,15 @@ class SecureCookieSession(CallbackDict[str, t.Any], SessionMixin):
+ 79|     #: will only be written to the response if this is ``True``.
+ 80|     modified = False
+ 81| 
+ 82|     def __init__(
+ 83|         self,
+ 84|-        initial: c.Mapping[str, t.Any] | c.Iterable[tuple[str, t.Any]] | None = None,
+ 85|+        initial: c.Mapping[str, t.Any] | None = None,
+ 86|     ) -> None:
+ 87|         def on_update(self: te.Self) -> None:
+ 88|             self.modified = True
+ 89|-            self.accessed = True
+ 90| 
+ 91|         super().__init__(initial, on_update)
+ 92| 
+ 93|-    ...
+ 94| class NullSession(SecureCookieSession):
+ 95|     """Class used to generate nicer error messages if sessions are not
+ 96|diff --git a/src/flask/templating.py b/src/flask/templating.py
+ 97|index 16d480f5..c5fb5b99 100644
+ 98|--- a/src/flask/templating.py
+ 99|+++ b/src/flask/templating.py
+100|@@ -22,8 +22,8 @@ if t.TYPE_CHECKING:  # pragma: no cover
+101| def _default_template_ctx_processor() -> dict[str, t.Any]:
+102|-    """Default template context processor.  Injects `request`,
+103|-    `session` and `g`.
+104|+    """Default template context processor.  Replaces the ``request`` and ``g``
+105|+    proxies with their concrete objects for faster access.
+106|     """
+107|     appctx = _cv_app.get(None)
+108|     reqctx = _cv_request.get(None)
+109|@@ -32,7 +32,8 @@ def _default_template_ctx_processor() -> dict[str, t.Any]:
+110|         rv["g"] = appctx.g
+111|     if reqctx is not None:
+112|         rv["request"] = reqctx.request
+113|-        rv["session"] = reqctx.session
+114|+        # The session proxy cannot be replaced, accessing it gets
+115|+        # RequestContext.session, which sets session.accessed.
+116|     return rv
+117|diff --git a/tests/test_basic.py b/tests/test_basic.py
+118|index c372a910..4b3374e2 100644
+119|--- a/tests/test_basic.py
+120|+++ b/tests/test_basic.py
+121|@@ -231,27 +233,46 @@ def test_endpoint_decorator(app, client):
+122|     assert client.get("/foo/bar").data == b"bar"
+123| 
+124| 
+125|-def test_session(app, client):
+126|-    @app.route("/set", methods=["POST"])
+127|-    def set():
+128|-        assert not flask.session.accessed
+129|-        assert not flask.session.modified
+130|+def test_session_accessed(app: flask.Flask, client: FlaskClient) -> None:
+131|+    @app.post("/")
+132|+    def do_set():
+133|         flask.session["value"] = flask.request.form["value"]
+134|-        assert flask.session.accessed
+135|-        assert flask.session.modified
+136|         return "value set"
+137| 
+138|-    @app.route("/get")
+139|-    def get():
+140|-        assert not flask.session.accessed
+141|-        assert not flask.session.modified
+142|-        v = flask.session.get("value", "None")
+143|-        assert flask.session.accessed
+144|-        assert not flask.session.modified
+145|-        return v
+146|-
+147|-    assert client.post("/set", data={"value": "42"}).data == b"value set"
+148|-    assert client.get("/get").data == b"42"
+149|+    @app.get("/")
+150|+    def do_get():
+151|+        return flask.session.get("value", "None")
+152|+
+153|+    @app.get("/nothing")
+154|+    def do_nothing() -> str:
+155|+        return ""
+156|+
+157|+    with client:
+158|+        rv = client.get("/nothing")
+159|+        assert "cookie" not in rv.vary
+160|+        ...
+161|+
+162|+    with client:
+163|+        rv = client.post(data={"value": "42"})
+164|+        assert rv.text == "value set"
+165|+        assert "cookie" in rv.vary
+166|+        ...
+167|+
+168|+    with client:
+169|+        rv = client.get()
+170|+        assert rv.text == "42"
+171|+        assert "cookie" in rv.vary
+172|+        ...
+173|+
+174|+    with client:
+175|+        rv = client.get("/nothing")
+176|+        ...
+177|+        assert not request_ctx._session.modified
+178| 

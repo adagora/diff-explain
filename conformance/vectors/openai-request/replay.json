@@ -1,0 +1,8 @@
+{
+  "input_bytes": [
+    "{\"role\":\"user\",\"content\":\"abridge this\"}",
+    "{\"type\":\"reasoning\",\"id\":\"rs_1\",\"encrypted_content\":\"AAAA\",\"summary\":[ ],\"n\":1.0}",
+    "{\"type\":\"function_call\",\"call_id\":\"call_1\",\"name\":\"read_file\",\"arguments\":\"{\\\"path\\\":\\\"a/b.go\\\"}\"}",
+    "{\"type\":\"function_call_output\",\"call_id\":\"call_1\",\"output\":\"package a\\n\"}"
+  ]
+}

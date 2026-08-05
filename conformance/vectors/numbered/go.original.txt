@@ -1,0 +1,76 @@
+ 1|diff --git a/src/net/dnsclient_unix.go b/src/net/dnsclient_unix.go
+ 2|index ed32ba0280..f9d5d18318 100644
+ 3|--- a/src/net/dnsclient_unix.go
+ 4|+++ b/src/net/dnsclient_unix.go
+ 5|@@ -718,7 +718,7 @@ func (r *Resolver) goLookupIPCNAMEOrder(ctx context.Context, network, name strin
+ 6| 				h, err := result.p.AnswerHeader()
+ 7| 				if err != nil && err != dnsmessage.ErrSectionDone {
+ 8| 					lastErr = &DNSError{
+ 9|-						Err:    "cannot marshal DNS message",
+10|+						Err:    errCannotUnmarshalDNSMessage.Error(),
+11| 						Name:   name,
+12| 						Server: result.server,
+13| 					}
+14|@@ -731,7 +731,7 @@ func (r *Resolver) goLookupIPCNAMEOrder(ctx context.Context, network, name strin
+15| 					a, err := result.p.AResource()
+16| 					if err != nil {
+17| 						lastErr = &DNSError{
+18|-							Err:    "cannot marshal DNS message",
+19|+							Err:    errCannotUnmarshalDNSMessage.Error(),
+20| 							Name:   name,
+21| 							Server: result.server,
+22| 						}
+23|@@ -746,7 +746,7 @@ func (r *Resolver) goLookupIPCNAMEOrder(ctx context.Context, network, name strin
+24| 					aaaa, err := result.p.AAAAResource()
+25| 					if err != nil {
+26| 						lastErr = &DNSError{
+27|-							Err:    "cannot marshal DNS message",
+28|+							Err:    errCannotUnmarshalDNSMessage.Error(),
+29| 							Name:   name,
+30| 							Server: result.server,
+31| 						}
+32|@@ -761,7 +761,7 @@ func (r *Resolver) goLookupIPCNAMEOrder(ctx context.Context, network, name strin
+33| 					c, err := result.p.CNAMEResource()
+34| 					if err != nil {
+35| 						lastErr = &DNSError{
+36|-							Err:    "cannot marshal DNS message",
+37|+							Err:    errCannotUnmarshalDNSMessage.Error(),
+38| 							Name:   name,
+39| 							Server: result.server,
+40| 						}
+41|@@ -774,7 +774,7 @@ func (r *Resolver) goLookupIPCNAMEOrder(ctx context.Context, network, name strin
+42| 				default:
+43| 					if err := result.p.SkipAnswer(); err != nil {
+44| 						lastErr = &DNSError{
+45|-							Err:    "cannot marshal DNS message",
+46|+							Err:    errCannotUnmarshalDNSMessage.Error(),
+47| 							Name:   name,
+48| 							Server: result.server,
+49| 						}
+50|@@ -866,7 +866,7 @@ func (r *Resolver) goLookupPTR(ctx context.Context, addr string, order hostLooku
+51| 		}
+52| 		if err != nil {
+53| 			return nil, &DNSError{
+54|-				Err:    "cannot marshal DNS message",
+55|+				Err:    errCannotUnmarshalDNSMessage.Error(),
+56| 				Name:   addr,
+57| 				Server: server,
+58| 			}
+59|@@ -875,7 +875,7 @@ func (r *Resolver) goLookupPTR(ctx context.Context, addr string, order hostLooku
+60| 			err := p.SkipAnswer()
+61| 			if err != nil {
+62| 				return nil, &DNSError{
+63|-					Err:    "cannot marshal DNS message",
+64|+					Err:    errCannotUnmarshalDNSMessage.Error(),
+65| 					Name:   addr,
+66| 					Server: server,
+67| 				}
+68|@@ -885,7 +885,7 @@ func (r *Resolver) goLookupPTR(ctx context.Context, addr string, order hostLooku
+69| 		ptr, err := p.PTRResource()
+70| 		if err != nil {
+71| 			return nil, &DNSError{
+72|-				Err:    "cannot marshal DNS message",
+73|+				Err:    errCannotUnmarshalDNSMessage.Error(),
+74| 				Name:   addr,
+75| 				Server: server,
+76| 			}
