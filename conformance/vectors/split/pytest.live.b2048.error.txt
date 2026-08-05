@@ -1,0 +1,5 @@
+edit plan has 4 errors:
+- hunk header on line 5 has counts inconsistent with its body near line 39
+- hunk header on line 43 has counts inconsistent with its body near line 57
+- hunk header on line 57 has counts inconsistent with its body near line 83
+- hunk header on line 87 has counts inconsistent with its body near line 123

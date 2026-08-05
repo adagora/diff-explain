@@ -1,0 +1,26 @@
+{
+  "error": "",
+  "moves": [
+    {
+      "Removed": {
+        "start_line": 72,
+        "end_line": 81
+      },
+      "Added": {
+        "start_line": 23,
+        "end_line": 32
+      }
+    },
+    {
+      "Removed": {
+        "start_line": 98,
+        "end_line": 101
+      },
+      "Added": {
+        "start_line": 40,
+        "end_line": 43
+      }
+    }
+  ],
+  "smart_diff": "diff --git a/src/_pytest/config/__init__.py b/src/_pytest/config/__init__.py\nindex 3a10c3aa8..e08fc41d3 100644\n--- a/src/_pytest/config/__init__.py\n+++ b/src/_pytest/config/__init__.py\n@@ -1199,9 +1199,43 @@ class Config:\n         \"\"\"\n         self._cleanup_stack.callback(func)\n \n+    @contextlib.contextmanager\n+    def _catch_configured_warnings(\n+        self,\n+        *,\n+        record: bool,\n+    ) -> Generator[list[warnings.WarningMessage] | None]:\n+        config_filters = self.getini(\"filterwarnings\")\n+        cmdline_filters = self.known_args_namespace.pythonwarnings or []\n+        with warnings.catch_warnings(record=record) as log:\n+            if not sys.warnoptions:\n+                ...\n+            apply_warning_filters(config_filters, cmdline_filters)\n+            yield log\n     def _do_configure(self) -> None:\n+        if self.pluginmanager.hasplugin(\"warnings\"):\n+            with contextlib.ExitStack() as stack:\n+                stack.enter_context(self._catch_configured_warnings(record=False))\n+                self.add_cleanup(stack.pop_all().close)\n         self.hook.pytest_configure.call_historic(kwargs=dict(config=self))\ndiff --git a/src/_pytest/warnings.py b/src/_pytest/warnings.py\nindex d599d6c27..2c721d6e3 100644\n--- a/src/_pytest/warnings.py\n+++ b/src/_pytest/warnings.py\n@@ -33,19 +30,7 @@ def catch_warnings_for_item(\n \n     Each warning captured triggers the ``pytest_warning_recorded`` hook.\n     \"\"\"\n-    with warnings.catch_warnings(record=record) as log:\n-        if not sys.warnoptions:\n-            ...\n-        apply_warning_filters(config_filters, cmdline_filters)\n+    with config._catch_configured_warnings(record=record) as log:\ndiff --git a/testing/test_warnings.py b/testing/test_warnings.py\nindex e2363bd88..6b439eb4b 100644\n--- a/testing/test_warnings.py\n+++ b/testing/test_warnings.py\n@@ -700,6 +700,39 @@ def test_pytest_configure_warning(pytester: Pytester, recwarn) -> None:\n+@pytest.mark.parametrize(\"tryfirst\", [True, False])\n+def test_pytest_configure_warning_filter(pytester: Pytester, tryfirst: bool) -> None:\n+    pytester.makeini(\n+        \"\"\"\n+        [pytest]\n+        filterwarnings =\n+            ignore::UserWarning\n+        \"\"\"\n+    )\n+    pytester.makeconftest(\n+        f\"\"\"\n+        @pytest.hookimpl(tryfirst={tryfirst})\n+        def pytest_configure():\n+            warnings.warn(\"from pytest_configure\", UserWarning)\n+        \"\"\"\n+    )\n+    pytester.makepyfile(\"def test_it(): pass\")\n+    result = pytester.runpytest_subprocess()\n+    result.assert_outcomes(passed=1)\n+    result.stdout.no_fnmatch_line(\"*from pytest_configure*\")\n"
+}
