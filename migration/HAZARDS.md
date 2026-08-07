@@ -276,6 +276,21 @@ in particular). Where trimming decides whether a diff is empty
 (`meat/meat.go:119`) or a summary is blank (`meat/editplan.go:635`), write an
 explicit trim helper matching Go's set rather than calling `.trim()`.
 
+Two more branch-selecting sites found during stage 2, both deciding which of
+several output phrasings gets used: `meat/elision.go:24` (empty-vs-nonempty
+abridged text decides "elided all" vs. a kept-count phrasing) and
+`meat/elision.go:137`/`isFixedFoldLine` (decides whether a kept line is a fold
+placeholder at all). Also `meat/diff.go:420` (`fileMarkerLanguage`, trims a
+`---`/`+++` path before language detection). None of these are currently
+exercised by a fixture containing U+0085 or U+FEFF at the trim boundary.
+
+Related but distinct: `strings.Fields` (used by `meat/diff.go:369,402` and
+absent from `moves.go`, which deliberately uses a literal `" \t"`-only
+`TrimRight` instead, `meat/moves.go:201`) splits on `unicode.IsSpace` too — the
+same divergent set as `TrimSpace`, but a *split*, not a *trim*. Only matters if
+a hunk header or `diff --git` line contains non-ASCII whitespace between
+fields, which normal git output does not produce.
+
 ## H15 — Zero values and strict mode
 **Severity: low (mostly a benefit).**
 
