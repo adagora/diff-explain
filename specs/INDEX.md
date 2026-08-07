@@ -18,25 +18,25 @@ Legend: ⬜ not started · 🟡 partial · ✅ done
 | `elision.go` | `elision_test.go` | `elision.md` | ✅ | ✅ |
 | `diff.go` | `chunk_test.go` (layout use) | `diff.md` | 🟡 | ✅ |
 | `moves.go` | `moves_test.go` | `moves.md` | ✅ | ✅ |
-| `imports.go` | `imports_test.go` | `imports.md` | ✅ | ⬜ |
-| `python.go` | `editplan_test.go` (Python cases) | `python.md` | ✅ | ⬜ |
-| `editplan.go` | `editplan_test.go`, `python_golden_test.go` | `editplan.md` | ✅ | ⬜ |
-| `chunk.go` | `chunk_test.go`, `chunk_sanity_test.go` | `chunk.md` | ✅ | ⬜ |
-| `rubric.go` | `meat_test.go`, `rubric_e2e_test.go` | `rubric.md` | ✅ | ⬜ |
-| `tools.go` | `meat_test.go` | `tools.md` | ✅ | ⬜ |
-| `meat.go` | `meat_test.go` | `agent-loop.md` | ✅ | ⬜ |
-| `anthropic.go` | `anthropic_test.go` | `providers.md` | ✅ | ⬜ |
-| `openai.go` | `openai_test.go` | `providers.md` | ✅ | ⬜ |
+| `imports.go` | `imports_test.go` | `imports.md` | ✅ | ✅ |
+| `python.go` | `editplan_test.go` (Python cases) | `python.md` | ✅ | ✅ |
+| `editplan.go` | `editplan_test.go`, `python_golden_test.go` | `editplan.md` | ✅ | ✅ |
+| `chunk.go` | `chunk_test.go`, `chunk_sanity_test.go` | `chunk.md` | ✅ | ✅ |
+| `rubric.go` | `meat_test.go`, `rubric_e2e_test.go` | `rubric.md` | ✅ | ✅ |
+| `tools.go` | `meat_test.go` | `tools.md` | ✅ | ✅ |
+| `meat.go` | `meat_test.go` | `agent-loop.md` | ✅ | ✅ |
+| `anthropic.go` | `anthropic_test.go` | `providers.md` | ✅ | ✅ |
+| `openai.go` | `openai_test.go` | `providers.md` | ✅ | ✅ |
 
 ## CLI — `cmd/meat/`
 
 | Go source | Go tests | Spec | S1 | S2 |
 |---|---|---|:--:|:--:|
-| `stdin.go` | `readdiff_test.go` | `cli.md` | ✅ | ⬜ |
-| `isatty_*.go` (4 files) | — | `cli.md` | ⬜ | ⬜ |
-| `cache.go` | `cache_test.go` | `cache.md` | ✅ | ⬜ |
-| `render.go` | `render_test.go` | `render.md` | ✅ | ⬜ |
-| `main.go` | `readdiff_test.go`, `install_test.go` | `cli.md` | ✅ | ⬜ |
+| `stdin.go` | `readdiff_test.go` | `cli.md` | ✅ | ✅ |
+| `isatty_*.go` (4 files) | — | `cli.md` | ⬜ | ✅ |
+| `cache.go` | `cache_test.go` | `cache.md` | ✅ | ✅ |
+| `render.go` | `render_test.go` | `render.md` | ✅ | ✅ |
+| `main.go` | `readdiff_test.go`, `install_test.go` | `cli.md` | ✅ | ✅ |
 
 `isatty_*.go` is specified but **not ported** — Node's `tty.isatty` replaces the
 whole build-tag family (hazard H11). The spec records that as an intentional

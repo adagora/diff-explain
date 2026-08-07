@@ -257,14 +257,25 @@ divergence so a later reader doesn't think coverage was lost.
   tests may exercise.
 
 ## H13 — Map iteration order
-**Severity: low. Affects: `openai.go`.**
+**Severity: low. Affects: `openai.go`, `editplan.go`.**
 
 Go randomizes map iteration order deliberately; JS `Map` and object key order
-are deterministic. The one place it matters is the OpenAI streaming reassembly,
-which buffers items in `map[int]json.RawMessage` and then sorts the indices
+are deterministic. In the OpenAI streaming reassembly, items are buffered in
+`map[int]json.RawMessage` and then the indices are sorted
 (`meat/openai.go:384,449`) — already deterministic, so it ports directly. Keep
 the explicit sort even though a JS `Map` would preserve insertion order; the
 sort is the actual contract.
+
+A second, lower-stakes site: `editplan.go`'s replacement-overlap check ranges
+over `replacements map[int][]plannedReplacement` (`meat/editplan.go:284,353`)
+to validate each line's planned replacements for span overlap. If two or more
+*different* physical lines each have their own overlapping-replacement
+problem, the order those lines' `"span overlaps"` errors are appended to the
+aggregated error is unspecified in Go. No fixture exercises 2+ simultaneously
+offending lines, so this imposes no reproducible order a port must match — a
+deterministic port (`Map` insertion order, or an object with integer-like
+keys) will incidentally be more deterministic than Go here, which is safe,
+not a correctness risk.
 
 ## H14 — Whitespace trimming differs at the edges
 **Severity: low. Affects: anywhere `strings.TrimSpace` is used.**
@@ -291,6 +302,14 @@ same divergent set as `TrimSpace`, but a *split*, not a *trim*. Only matters if
 a hunk header or `diff --git` line contains non-ASCII whitespace between
 fields, which normal git output does not produce.
 
+Two more branch-selecting sites found during the `cmd/meat/` stage 2 batch:
+`cmd/meat/render.go:92` (`strings.TrimSpace(diff) == ""` decides between the
+diff body and the fixed "(no meaningful change to read)" placeholder) and
+`cmd/meat/main.go:109` (a second, CLI-side empty-diff check, independent of
+and preceding `meat/meat.go:119`'s own — the CLI rejects an empty diff with
+`"no diff to read (%s)"` before ever calling into the engine). Neither is
+exercised by a fixture containing U+0085 or U+FEFF at the trim boundary.
+
 ## H15 — Zero values and strict mode
 **Severity: low (mostly a benefit).**
 
@@ -301,6 +320,39 @@ receiver can be a meaningful state (`tb.submittedPlan != nil` at
 `meat/meat.go:204` gates the retention nudge), and Go's `nil` map/slice reads as
 empty rather than throwing. Prefer explicit `null` over `undefined` for ported
 nil pointers so the distinction stays visible.
+
+## H16 — Two incompatible conventions for "indentation width" coexist in the source
+**Severity: low. Affects: `imports.go`, `python.go`, `editplan.go`, `moves.go`.**
+
+`leadingWhitespace(s)` (`meat/editplan.go:480-486`) returns the literal
+leading run of space/tab bytes — no interpretation of width. Every caller
+then picks one of two incompatible conventions for turning that text into a
+comparable "depth":
+
+- **Raw byte count** — `len(leadingWhitespace(...))`, one column per
+  space *or* tab byte regardless of tab stops. Used throughout `imports.go`
+  (`imports.go:29,39,520,531`) and `python.go` (`python.go:36,250,263,330,362`)
+  for every suite/guard/body indentation comparison, and by `editplan.go:452`
+  for fold-range common-indent computation.
+- **Tab-expanded columns** — `indentationColumns` (`meat/moves.go:218-228`)
+  expands each tab to the next multiple of 8 before comparing. Used only by
+  `moves.go`'s own move-line matching.
+
+The two conventions are never compared against each other directly today —
+each file is internally self-consistent — but they are **not** interchangeable:
+a line indented with one tab (raw width 1, column width 8) and a line
+indented with eight spaces (raw width 8, column width 8) compare as
+"deeper"/"shallower" oppositely under the two conventions relative to a
+mixed-depth neighbor. No fixture in any test file mixes tabs and spaces at a
+matching nominal depth, so this is currently latent everywhere it applies.
+
+**Port `leadingWhitespace` as a single string-returning primitive, and keep
+two separate width functions on top of it** — a raw length and a tab-expanded
+column count — mirroring the Go source exactly rather than unifying "leading
+indentation" into one helper. A port that unifies them changes which suite
+bodies `imports.go`/`python.go` judge as nested vs. sibling wherever a real
+diff mixes tabs and spaces, and changes which move-line pairs `moves.go`
+matches.
 
 ---
 
