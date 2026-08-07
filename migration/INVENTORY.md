@@ -83,20 +83,23 @@ One subagent per file. Tick when its spec exists and its citations verify.
 - [x] `meat/chunk_test.go` (1,559 L, 36 tests)
 - [x] `meat/editplan_test.go` (923 L, 50 tests)
 - [x] `meat/meat_test.go` (768 L, 29 tests)
-- [ ] `meat/imports_test.go` (447 L, 14 tests)
-- [ ] `meat/moves_test.go` (440 L, 11 tests)
-- [ ] `meat/rubric_e2e_test.go` (365 L, 3 tests) — costed/stochastic, opt-in
+- [x] `meat/imports_test.go` (447 L, 14 tests)
+- [x] `meat/moves_test.go` (440 L, 11 tests)
+- [x] `meat/rubric_e2e_test.go` (365 L, 3 tests) — costed/stochastic, opt-in
 - [x] `meat/python_golden_test.go` (297 L, 1 test) — **the hard gate**
-- [ ] `meat/openai_test.go` (228 L, 4 tests)
-- [ ] `meat/anthropic_test.go` (214 L, 6 tests)
-- [ ] `meat/gateway_test.go` (210 L, 11 tests)
-- [ ] `meat/elision_test.go` (189 L, 11 tests)
-- [ ] `meat/chunk_sanity_test.go` (78 L, 1 test) — env-gated on `CHUNK_SANITY_DIFF`
-- [ ] `meat/resolvemodel_test.go` (27 L, 1 test)
-- [ ] `cmd/meat/readdiff_test.go` (262 L, 7 tests)
-- [ ] `cmd/meat/render_test.go` (211 L, 9 tests)
-- [ ] `cmd/meat/cache_test.go` (190 L, 8 tests)
-- [ ] `cmd/meat/install_test.go` (48 L, 1 test)
+- [x] `meat/openai_test.go` (228 L, 4 tests)
+- [x] `meat/anthropic_test.go` (214 L, 6 tests)
+- [x] `meat/gateway_test.go` (210 L, 11 tests)
+- [x] `meat/elision_test.go` (189 L, 11 tests)
+- [x] `meat/chunk_sanity_test.go` (78 L, 1 test) — env-gated on `CHUNK_SANITY_DIFF`
+- [x] `meat/resolvemodel_test.go` (27 L, 1 test)
+- [x] `cmd/meat/readdiff_test.go` (262 L, 7 tests)
+- [x] `cmd/meat/render_test.go` (211 L, 9 tests)
+- [x] `cmd/meat/cache_test.go` (190 L, 8 tests)
+- [x] `cmd/meat/install_test.go` (48 L, 1 test)
+
+**Stage 1 checklist complete — all 17 test files processed (203 of 203
+test functions).**
 
 Start with `python_golden_test.go`: it is hermetic, locks exact snapshot bytes,
 semantic anchors, move behavior, and absolute budgets, and it is the test the
@@ -108,12 +111,12 @@ port is ultimately graded against. Its rationale is already written up in
 Port order is dependency order; spec order should match so later specs can
 reference earlier vocabulary.
 
-- [ ] `meat/model.go`
-- [ ] `meat/provider.go`
-- [ ] `meat/gateway.go`
-- [ ] `meat/elision.go`
-- [ ] `meat/diff.go`
-- [ ] `meat/moves.go`
+- [x] `meat/model.go`
+- [x] `meat/provider.go`
+- [x] `meat/gateway.go`
+- [x] `meat/elision.go`
+- [x] `meat/diff.go`
+- [x] `meat/moves.go`
 - [ ] `meat/imports.go`
 - [ ] `meat/python.go`
 - [ ] `meat/editplan.go`

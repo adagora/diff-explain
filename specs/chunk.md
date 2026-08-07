@@ -1,8 +1,8 @@
 # chunk
 
-> Status: stage 1 🟡 | stage 2 ⬜
+> Status: stage 1 ✅ | stage 2 ⬜
 > Go sources: `meat/chunk.go`
-> Go tests: `meat/chunk_test.go` (36 tests, splitting/merging), `meat/meat_test.go` (3 tests, chunking triggers from `Abridge`'s perspective); `meat/chunk_sanity_test.go` (1 test, env-gated on `CHUNK_SANITY_DIFF`) not yet processed
+> Go tests: `meat/chunk_test.go` (36 tests, splitting/merging), `meat/meat_test.go` (3 tests, chunking triggers from `Abridge`'s perspective), `meat/chunk_sanity_test.go` (1 test, env-gated on `CHUNK_SANITY_DIFF`, opt-in real-world differential check)
 
 ## Purpose
 
@@ -486,6 +486,36 @@ G45. `Request`'s exported field order/shape is unaffected by the chunking
      (`Request` fields) and `meat/meat.go:78-90` (`runOptions`, kept
      separate). See `agent-loop.md`.
 
+### Real-world differential sanity check (`chunk_sanity_test.go`)
+
+G46. Splitting an arbitrary, externally-supplied real-world diff — not a
+     curated synthetic fixture — at the production single-run budget and at
+     three shrunken budgets (200KB, 64KB, 16KB) always succeeds, and every
+     resulting chunk independently fits the same budget and independently
+     passes structural diff validation. Across all chunks of one run,
+     concatenating in chunk order exactly the changed rows that survive the
+     whole-diff mandatory pass (import removal plus move-precedence
+     extension, placeholder rows excluded) reproduces, byte-for-byte and in
+     the same order, the same computation run once over the whole, unsplit
+     diff — chunking loses, duplicates, and reorders none of what
+     whole-diff compilation would have kept. A budget smaller than twice
+     the fixture's longest single physical line is exempted from this
+     check and only logged, not asserted: a single physical line is never
+     split, so a budget that tight legitimately refuses rather than
+     violating the guarantee. Generalizes, against arbitrary input, the
+     same invariant G10/G11/G25/G26/G34 pin with synthetic fixtures.
+     — `meat/chunk_sanity_test.go:17-61` (env gate `:18-21`, skip-boundary
+     `budget < longest*2` at `:38`), oracle `retainedChangedRows`
+     (`:66-78`), pinned against `splitDiffForAbridging`
+     (`meat/chunk.go:150`), `fitsSingleRun` (`meat/chunk.go:93-103`),
+     `validateSupportedDiff` (`meat/diff.go:88`), `mandatoryRemovalMask`
+     (`meat/imports.go:341-349`), `mandatoryImportRemovalPlan`
+     (`meat/imports.go:156-250`), `detectExactMoves` (`meat/moves.go:58`),
+     `applyMandatoryMovePrecedence` (`meat/moves.go:265-280`), and
+     `isFixedFoldLine` (`meat/elision.go:133-138`, excludes synthesized
+     `"..."` placeholder rows the splitter itself writes in place of a
+     hidden Python-suite-owner import row — see `elision.md`).
+
 ## Constants
 
 | Name | Value | Unit | Citation | At the boundary |
@@ -528,3 +558,20 @@ G45. `Request`'s exported field order/shape is unaffected by the chunking
   `meat/imports.go:370-394`) is not exercised together with splitting. Likely
   safe by construction (the import mask is computed globally before
   cutting, per G10/G26) but not directly pinned.
+- **G46's doc comment doesn't match its code.** `chunk_sanity_test.go`'s doc
+  comment says a budget "below the diff's longest physical line" is
+  skipped, but the code skips when `budget < longest*2` — twice the
+  longest line, not merely at or above it. No rationale for the factor of
+  2 is stated anywhere; the guarantee is pinned to the code, not the
+  comment.
+- **G46 never asserts a split actually occurs.** No check requires
+  `len(chunks) > 1` at any budget — a supplied diff smaller than 16KB would
+  pass every budget trivially (each producing one whole-diff "chunk")
+  without exercising a real cut; only a non-failing `t.Logf` reports chunk
+  counts. G46 also has no accommodation for a real-world diff legitimately
+  tripping `maxChunks` refusal (G27) or the line-too-long refusal (G13) at
+  a small budget — either would `t.Fatalf` the whole test rather than
+  being treated as an expected outcome. And G46 never calls
+  `abridgeChunked`/`Abridge` or checks a byte-exact merge back to the
+  original (that's G22/G28/G32, pinned only via synthetic fixtures) — it
+  only splits and structurally re-validates, never abridges or merges.
