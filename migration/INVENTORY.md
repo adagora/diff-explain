@@ -117,20 +117,20 @@ reference earlier vocabulary.
 - [x] `meat/elision.go`
 - [x] `meat/diff.go`
 - [x] `meat/moves.go`
-- [ ] `meat/imports.go`
-- [ ] `meat/python.go`
-- [ ] `meat/editplan.go`
-- [ ] `meat/chunk.go`
-- [ ] `meat/rubric.go`
-- [ ] `meat/tools.go`
-- [ ] `meat/meat.go`
-- [ ] `meat/anthropic.go`
-- [ ] `meat/openai.go`
-- [ ] `cmd/meat/stdin.go`
-- [ ] `cmd/meat/isatty_*.go` (all four, one spec)
-- [ ] `cmd/meat/cache.go`
-- [ ] `cmd/meat/render.go`
-- [ ] `cmd/meat/main.go`
+- [x] `meat/imports.go`
+- [x] `meat/python.go`
+- [x] `meat/editplan.go`
+- [x] `meat/chunk.go`
+- [x] `meat/rubric.go`
+- [x] `meat/tools.go`
+- [x] `meat/meat.go`
+- [x] `meat/anthropic.go`
+- [x] `meat/openai.go`
+- [x] `cmd/meat/stdin.go`
+- [x] `cmd/meat/isatty_*.go` (all four, one spec)
+- [x] `cmd/meat/cache.go`
+- [x] `cmd/meat/render.go`
+- [x] `cmd/meat/main.go`
 
 ## External surface the port must preserve
 
