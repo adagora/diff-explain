@@ -138,6 +138,28 @@ that **off** via `SetEscapeHTML(false)`. `JSON.stringify` does not escape HTML,
 so the ported output matches — but only because the Go side disabled it. Don't
 "helpfully" add escaping.
 
+**The harder direction: decoding a `RawMessage` field out of an incoming
+response.** Outgoing is a splice; incoming has no JS equivalent to
+`json.Unmarshal`'s "route this one field into a `RawMessage` without ever
+parsing it" behavior — a single `JSON.parse` of the whole response body
+parses *every* field, `RawMessage` ones included, losing their exact bytes
+before this file ever sees them. Solved in `anthropic.ts` (item 4o) for
+`tool_use.input` (an object/array embedded directly in the response, not a
+JSON-encoded string): `scanJSONValueEnd`/`rawObjectField`/`rawArrayElements`
+track bracket/quote nesting only — never interpreting a value — to locate
+and slice out a field's raw span from the *original* response text, used
+alongside (not instead of) a normal `JSON.parse` for every other,
+safe-to-reformat field. Verified against duplicate keys, `2^53`-exceeding
+integers, and reformattable decimals (`1.50`) in `test/meat/anthropic.test.ts`.
+Reusable as-is for any future incoming `RawMessage` field that is embedded
+JSON (an object/array) rather than a JSON-encoded string — `openai.go`'s
+`function_call.arguments` is the *other* shape (already a JSON string, so a
+plain `JSON.parse` of the whole body reproduces it losslessly with no
+scanning needed), but `blocksFromOpenAIItem`'s whole-item clone (capturing
+an entire raw output-array element, not a nested field within one) is a
+simpler instance of the same problem `rawArrayElements` alone already
+solves.
+
 ## H5 — Error wrapping and sentinel identity
 **Severity: medium. Affects: `chunk.go`, `meat.go`, and all callers.**
 
@@ -234,8 +256,18 @@ tests actually cover.
 
 Four files, four build tags, `syscall.Syscall` with `unsafe.Pointer` and
 per-platform TCGETS/TIOCGETA ioctl numbers — all to answer "is fd a terminal".
-Node answers it with `tty.isatty(fd)`. Similarly `stdinIsPiped`'s
-`os.ModeCharDevice` check (`cmd/meat/stdin.go:17`) becomes `!process.stdin.isTTY`.
+Node answers it with `tty.isatty(fd)`. `stdinIsPiped`'s separate
+`os.ModeCharDevice` check (`cmd/meat/stdin.go:17`) becomes
+`!fstatSync(0).isCharacterDevice()` — **not** `!process.stdin.isTTY` as an
+earlier draft of this entry said. `.isTTY` answers "is fd 0 a tty," which is
+much closer to what `isatty` itself asks; Go's check asks the coarser
+"is fd 0 a character device at all," and `fs.fstatSync(0).isCharacterDevice()`
+is the literal match. Ported in `src/cli/stdin.ts` (item 5a); verified by
+spawning a child with `stdio: ["ignore", ...]` (Node backs an ignored fd with
+`/dev/null`, a character device) vs. a real piped `stdio: ["pipe", ...]` —
+the two report opposite `stdinIsPiped` results, confirming the mechanism
+and preserving its asymmetry with `isatty` (below) rather than assuming one
+`isTTY`-shaped check could serve both call sites.
 
 Delete the platform split; do not port it. This is the one place the port gets
 strictly simpler, and it should be noted in the spec as an intentional
@@ -355,6 +387,147 @@ diff mixes tabs and spaces, and changes which move-line pairs `moves.go`
 matches.
 
 ---
+
+## H17 — Go's package-level `var` test seams have no direct ES module equivalent
+**Severity: low (port-only, no Go behavior at stake). Affects: `gateway.go`
+today; will recur for `meat.go`'s `abridgeBudget`/single-run-byte overrides
+and any other file that follows the same pattern.**
+
+Several Go files expose package-level `var`s purely so same-package tests can
+override them for the duration of one test (`exeDevMarkerPath`,
+`reflectionIntegrationsURL` at `meat/gateway.go:14,18`, reassigned directly by
+`meat/gateway_test.go`'s `withMarker`/`withReflection` helpers). An ES module's
+`export let` binding cannot be reassigned from an importing module — it is a
+live *read-only* view outside its own module; TypeScript rejects the
+assignment at compile time ("Cannot assign to 'x' because it is an import"),
+and plain JS ESM would throw the equivalent `TypeError` at runtime if the
+compiler didn't already catch it.
+
+**Port every such seam as one exported `const` object with mutable fields**
+(e.g. `export const gatewayConfig = { exeDevMarkerPath, reflectionIntegrationsURL }`),
+never as `export let`. The binding stays constant; its properties don't. Tests
+mutate `gatewayConfig.exeDevMarkerPath = ...` and restore the original value
+in an `afterEach`, exactly mirroring Go's `t.Cleanup(func() { old = ... })`
+pattern. See `src/meat/gateway.ts` for the first instance.
+
+## H18 — Go raw string literals perform zero escape processing; JS template literals do
+**Severity: medium (silent, byte-exact corruption of a hashed/pinned literal).
+Affects: `rubric.ts` (`systemPrompt`) today; any future file porting a Go
+backtick-delimited raw string that contains a literal backslash.**
+
+Go's backtick-delimited raw string literal treats every byte between the
+backticks literally — a backslash is just a backslash, never the start of an
+escape sequence (there is no way to escape a backtick itself inside one,
+which is exactly why Go used one continuous raw string for `systemPrompt`:
+the text contains no backtick). A JS/TS template literal looks identical
+(also backtick-delimited) but is **not** raw: `\n` inside one is a newline
+control character, `\\` is a single literal backslash, and so on — the exact
+opposite default from what a naive "it's backticks in both languages" port
+assumes.
+
+`meat/rubric.go:294`'s worked example — `("escaped", "a\\nb", "a\nb"),` —
+demonstrates the trap precisely: in Go's raw string this is literal text
+containing two backslashes then one backslash (four and two source
+characters respectively, no collapsing). Copied verbatim into a TS template
+literal, JS's escape processor collapses `\\n` to one backslash, then reads
+the bare `\n` as an actual newline byte — silently producing a *different*
+string that still looks visually identical to a fast readthrough, differs
+from the Go source only at that one line, and would corrupt `RubricHash()`
+(and any future byte-exact hash/vector built from a ported raw string)
+without any compiler error.
+
+**Port every Go raw-string literal containing a backslash by doubling each
+backslash in the TS template literal source** (`\` → `\\`), never by
+eyeballing a manual transcription. Verify with a throwaway script that
+extracts the exact byte span between the Go source's backticks and compares
+it, character for character, against the built TS module's exported value —
+this is how the bug was caught in `rubric.ts` before the item was ticked.
+Also check for literal backtick or `${` sequences in the source text before
+transcribing (neither can appear in a Go raw string that used backticks as
+its own delimiter without splitting into concatenated string pieces, but a
+Go source using string concatenation for a backtick-containing literal would
+need escaping on the TS side that this port hasn't needed yet).
+
+## H19 — `AbortSignal.timeout()`'s internal timer is deliberately unref'd
+**Severity: medium (test-flaky and, in production, a real correctness gap —
+a "deadline" that can silently never fire). Affects: `meat.ts`'s per-run
+budget timeout today; any future file composing a timeout-derived
+`AbortSignal` (`anthropic.ts`/`openai.ts`'s own per-request timeouts are
+the obvious next candidates).**
+
+Go's `context.WithTimeout` reliably fires its deadline regardless of what
+else the process is doing — an idle goroutine tree still gets cancelled on
+schedule. `AbortSignal.timeout(ms)` looks like the direct port target
+(`migration/TARGET.md`'s stdlib table even names it), but Node's own docs
+state its internal timer is unref'd specifically so it never keeps the
+process alive on its own. When that timer is the *only* pending work — a
+fake/hung `Model` in a test with no real I/O is exactly this case, but a
+production run whose model call is ALSO just waiting on this same signal
+with nothing else scheduled is the identical shape — the unref'd timer
+races an otherwise-idle event loop and can fire *after* whatever was
+awaiting it has already been torn down. Under `node:test` this manifests
+as `'Promise resolution is still pending but the event loop has already
+resolved'` on the offending test **and every test after it in the same
+file** (the failure cascades) — caught while building `meat.ts`'s
+`abridgeOne` (item 4n): `TestAbridge_InternalDeadlineReturnsValidFallback`'s
+port failed this exact way, isolated with a from-scratch repro
+(`AbortSignal.any([caller, AbortSignal.timeout(20)])` + an
+`addEventListener('abort', ...)` waiter, nothing else in the test) that
+confirmed removing `AbortSignal.timeout()` in favor of a plain, non-unref'd
+`setTimeout`-backed signal fixed it outright.
+
+**Port a per-run deadline as your own `setTimeout`-backed `AbortController`
+(ref'd — do not call `.unref()`), paired with an explicit `cancel()` called
+unconditionally in a `finally` block at every return path of the function
+that created it — this is the direct translation of Go's `ctx, cancel :=
+context.WithTimeout(...); defer cancel()`, and the `finally` is what
+prevents the ref'd timer from leaking past a run that finished before its
+deadline.** `AbortSignal.any([callerSignal, yourTimeoutSignal])` to compose
+with the caller's own signal is fine — the bug is specific to
+`AbortSignal.timeout()`'s own timer, not to `.any()`. See
+`src/meat/meat.ts`'s `timeoutSignal` for the pattern.
+
+## H20 — a circular ES module import is only safe when every cross-reference is deferred past module-evaluation time
+**Severity: medium (silent, load-order-dependent `ReferenceError` — passes or
+fails depending on which module a consumer happens to import first, so it
+can hide indefinitely and then break in a context that imports modules in
+an unlucky order). Affects: `provider.ts` (found here, item 4p); a general
+rule for any future circular pair.**
+
+Go's single-package compilation makes `const DefaultModel = DefaultOpenAIModel`
+(`meat/provider.go:10`, reading a const from `openai.go` in the same
+package) completely unremarkable — Go has no "module load order" concept
+within a package at all. A naive TS port of this one line as a top-level
+`export const DefaultModel = DefaultOpenAIModel` (importing `DefaultOpenAIModel`
+from `openai.ts`, while `openai.ts`/`anthropic.ts` import `resolveModel`
+back from `provider.ts`) creates a genuine circular ES module dependency —
+and unlike the `rubric.ts`<->`meat.ts` cycle (item 4n, already a precedent
+in this file), this one is NOT automatically safe. The difference: every
+cross-reference in the `rubric.ts`/`meat.ts` cycle is inside a function
+body, never evaluated until long after both modules finish loading. A
+top-level `const` reading a value from the OTHER side of a cycle, by
+contrast, is evaluated *during* module loading — and whether that value is
+already initialized at that point depends entirely on which of the two
+modules a consumer imports first. One order initializes cleanly (the
+importing module's own dependency graph happens to fully resolve the other
+side first); the reverse order hits the target `const` still in its
+temporal dead zone and throws `ReferenceError: Cannot access '...' before
+initialization` — deterministic per load order, but the load order itself
+is a property of *who imports this module first*, not of this file's own
+code, so it can vary across the same codebase's own test files, let alone
+between a library build and an embedder's own bundler.
+
+**Before writing a circular import, check whether the cross-reference is a
+function/method call (safe — defer it) or a bare top-level value read
+(unsafe — will not survive being on the "wrong" side of a load order).**
+Fixed in `provider.ts` by turning `DefaultModel` into a zero-argument
+function (`export function DefaultModel(): string`) instead of a top-level
+`const` — every caller changed from `DefaultModel` to `DefaultModel()`, a
+small, mechanical, one-time cost that makes the whole cycle immune to load
+order permanently, the same way `rubric.ts`/`meat.ts` already were by
+construction. Verified empirically, not just reasoned about: `provider.ts`
+loaded as its own test file's entry point (a different import order than
+loading via `anthropic.test.ts`/`openai.test.ts` first) passes cleanly.
 
 ## Register new hazards here
 

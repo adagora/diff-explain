@@ -34,16 +34,23 @@ affect any spec, only `package.json` and CI.
 
 ## Layout
 
-Go packages map one-to-one. Same file names, same responsibilities, same port
-order as [`INVENTORY.md`](INVENTORY.md).
+Go packages map one-to-one — same file names, same responsibilities — with
+two deliberate, documented exceptions where a Go *file* boundary doesn't
+survive translation into a TypeScript *module* graph (Go's single-package
+compilation has no file-order dependency; per-file TS imports do). Port
+order is [`INVENTORY.md`](INVENTORY.md)'s, as corrected by stage 3's own
+discoveries — see `TODO.md`'s "Notes for future iterations" for exactly what
+each exception fixes and why.
 
 ```
 src/
   meat/                    ← package meat
     bytes.ts               ← NEW — the byte-slice layer (H1). Port this first.
-    model.ts   provider.ts  gateway.ts  elision.ts
-    diff.ts    moves.ts     imports.ts  python.ts
-    editplan.ts chunk.ts    rubric.ts   tools.ts
+    model.ts   provider.ts  gateway.ts  diff.ts
+    plan.ts                ← NEW — editplan.go's type layer, extracted to
+                              break a moves/imports/python ↔ editplan cycle
+    moves.ts   imports.ts   python.ts   editplan.ts
+    elision.ts chunk.ts     rubric.ts   tools.ts
     meat.ts    anthropic.ts openai.ts
   cli/                     ← package main
     main.ts    cache.ts     render.ts   stdin.ts
@@ -98,6 +105,22 @@ compiler catches what the specs could not say.
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
 
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    // ↑ Stage 3 discovery (item 4d, diff.ts — the first file with an
+    //   intra-src import): NodeNext wants relative imports written with a
+    //   `.js` specifier so `tsc --noEmit` type-checks them as if compiled,
+    //   but `node --test`/direct `import()` run the raw `.ts` sources with
+    //   no build step, and Node's native type-stripping does not remap
+    //   `.js` -> `.ts` the way `tsc` does — a `.js` specifier 404s at
+    //   runtime. Source files import each other with a literal `.ts`
+    //   extension instead; `rewriteRelativeImportExtensions` (TS 5.7+)
+    //   makes the real `tsc` build (the `build` script, not `--noEmit`)
+    //   rewrite those to `.js` in `dist/`, so the published package still
+    //   resolves normally under plain Node with no TS support. Verified:
+    //   `tsc --noEmit` clean, `node --test` resolves `.ts` imports
+    //   directly, and a real `tsc` build emits `.js`-suffixed imports.
+
     "declaration": true,
     "sourceMap": true
   },
@@ -141,7 +164,7 @@ The complete dependency mapping. Nothing here needs a third-party package.
 | `unicode`, `unicode/utf8` | `TextEncoder`/`TextDecoder`, `/\p{…}/u` | H2. `ValidString` → decode with `{ fatal: true }`. |
 | `regexp` | `RegExp` | **Not equivalent** — H3. |
 | `encoding/json` | `JSON` + a raw-fragment serializer | H4. `RawMessage` must stay opaque. |
-| `context` | `AbortSignal.any` / `.timeout` | H6. |
+| `context` | `AbortSignal.any` / a hand-rolled `setTimeout`-backed signal | H6. **Not** `AbortSignal.timeout()` for a deadline whose expiry must be reliable — H19: its timer is deliberately unref'd and can lose a race against an otherwise-idle event loop. `AbortSignal.any()` itself is fine for composing signals. |
 | `net/http` | `fetch` | Both providers. |
 | `os/exec` | `node:child_process` | H12. `{ signal }` for cancellation. |
 | `os`, `io` | `node:fs/promises`, `node:process` | |
@@ -177,12 +200,14 @@ provider.
 ```jsonc
 {
   "name": "meat",
+  "version": "0.1.0",
   "type": "module",
   "engines": { "node": ">=20" },
   "bin": { "meat": "./dist/cli/main.js" },
   "files": ["dist"],
   "scripts": {
     "build": "tsc",
+    "postbuild": "chmod +x dist/cli/main.js",
     "test": "node --test",
     "check": "tsc --noEmit && node --test"
   },
@@ -191,8 +216,21 @@ provider.
 }
 ```
 
-`dist/cli/main.js` needs a `#!/usr/bin/env node` shebang preserved through the
-build, and the executable bit set on publish.
+**`version` is not optional** — `npm pack`/`npm publish` refuse to run
+without one (discovered in item 6/Packaging: the field was missing from
+this snippet until then, since nothing before that item ever actually
+packed the tarball). `0.1.0` for the initial port; bump per ordinary semver
+from here.
+
+`dist/cli/main.js` needs a `#!/usr/bin/env node` shebang preserved through
+the build (confirmed: `tsc` passes a source file's hashbang line straight
+through to its emitted `.js`, no extra config needed — the shebang must be
+literally the first line of `src/cli/main.ts` itself), and the executable
+bit set on publish. `tsc` does **not** set the executable bit on its own
+output, so `postbuild: chmod +x dist/cli/main.js` (npm's implicit
+pre/post-script convention — runs automatically after `npm run build`) is
+required; verified this is necessary, not defensive, by inspecting a real
+`npm pack` tarball's contents before adding it.
 
 ## Definition of done
 
