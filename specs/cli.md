@@ -412,8 +412,16 @@ Per H11, the `isatty_*.go` build-tag family (four files,
 `cmd/meat/isatty_unix.go:12-16`, `isatty_linux.go:7`,
 `isatty_bsd.go:7`) is not to be ported: Node's `tty.isatty(fd)` replaces
 all four. `stdinIsPiped`'s `os.ModeCharDevice` check separately becomes
-`!process.stdin.isTTY` — a different Node primitive for the different Go
-mechanism it replaces, not the same one reused.
+`!fstatSync(0).isCharacterDevice()` — a different Node primitive for the
+different Go mechanism it replaces, not the same one reused, and not
+`process.stdin.isTTY` either: `.isTTY` answers "is fd 0 a tty," which sits
+much closer to what `isatty` itself asks, while Go's check here asks the
+coarser "is fd 0 a character device at all." `fs.fstatSync(0)
+.isCharacterDevice()` is the literal match (confirmed in
+`src/cli/stdin.ts`, item 5a, by spawning child processes with `stdio:
+["ignore", ...]` — Node backs an ignored fd with `/dev/null`, a character
+device — versus a real piped `stdio: ["pipe", ...]`, and observing
+opposite `stdinIsPiped` results).
 
 ## Invariants
 
@@ -457,7 +465,9 @@ mechanism it replaces, not the same one reused.
   `main.go:117`'s interactivity check — is called. `stdinIsPiped`'s
   separate `os.ModeCharDevice` check (`cmd/meat/stdin.go:17`) is a
   *different* mechanism with its own Node equivalent,
-  `!process.stdin.isTTY` — the two do not collapse to the same
+  `!fstatSync(0).isCharacterDevice()` (not `process.stdin.isTTY`, which
+  answers a `.isTTY`-shaped question much closer to `isatty` itself) —
+  the two do not collapse to the same
   replacement, and (per Mechanism above) they classify `/dev/null`
   oppositely in the current Go source, a distinction the port should be
   aware of even though H11 already decided not to preserve the

@@ -1,2 +1,5 @@
 /meat-bin
 /conformance/meat-go
+/node_modules
+/dist
+.DS_Store

@@ -1,0 +1,16 @@
+{
+  "name": "meat",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "bin": { "meat": "./dist/cli/main.js" },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "postbuild": "chmod +x dist/cli/main.js",
+    "test": "node --test",
+    "check": "tsc --noEmit && node --test"
+  },
+  "dependencies": {},
+  "devDependencies": { "typescript": "^5.5", "@types/node": "^20" }
+}

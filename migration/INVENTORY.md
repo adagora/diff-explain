@@ -53,18 +53,33 @@ Ordered by porting dependency (earlier files have fewer dependents).
 | `model.go` | 82 | Provider-agnostic types: `Block`, `Message`, `Tool`, `Response`, `Model` interface. Flat structs, no type switches. |
 | `provider.go` | 42 | `ResolveModel` fallback chain: explicit → `$MEAT_MODEL` → `DefaultModel`. No network, no credentials. |
 | `gateway.go` | 73 | exe.dev managed-LLM-gateway discovery via `/exe.dev` marker file + reflection endpoint. |
-| `elision.go` | 138 | `ElisionLine` — the "kept 12/240 changed lines in 3/7 files" manifest, counted locally, never model-reported. |
 | `diff.go` | 480 | **Foundation.** Parses a unified diff into an immutable line-oriented layout; classifies every physical line and tags file / hunk / language. Everything downstream consumes this and never re-parses. |
-| `moves.go` | 480 | Exact source-evidenced move detection between change runs in different hunks. Whole-diff property. |
-| `imports.go` | 966 | The mandatory import-removal pass: multiline blocks, imports inside embedded source strings, move-precedence extension, Python suite placeholders. Compiler-owned; plans may not target these rows. |
-| `python.go` | 846 | Python-aware plan validators: hidden suite owners vs. orphaned bodies, delimiter and triple-quote balance, structural-token preservation. Conservative and text-level; rejects rather than guesses. |
-| `editplan.go` | 770 | **Core.** `compileEditPlan` validates a submitted plan (structure, elision projections, move symmetry, language rules) and renders the reading diff mechanically. |
+| `moves.go` | 480 | Exact source-evidenced move detection between change runs in different hunks. Whole-diff property. Its symmetry validators need `editplan.go`'s `planState` type — see the port-side `plan.ts` note below the table. |
+| `imports.go` | 966 | The mandatory import-removal pass: multiline blocks, imports inside embedded source strings, move-precedence extension, Python suite placeholders. Compiler-owned; plans may not target these rows. Three of its functions also take `editplan.go`'s `planState`. **Its own `embeddedSourceLines` — part of the vector-tested core, not just those three — calls `python.go`'s triple-quote scanner**, so the TS port builds `python.ts` first (`imports.go` has no matching dependency on `python.go` in the other direction); this table keeps upstream Go order since Go itself has no such constraint — see `TODO.md`'s "Notes for future iterations" for the port-order swap. |
+| `python.go` | 846 | Python-aware plan validators: hidden suite owners vs. orphaned bodies, delimiter and triple-quote balance, structural-token preservation. Conservative and text-level; rejects rather than guesses. Every validator here takes `editplan.go`'s `planState`. Has no dependency on `imports.go`. |
+| `editplan.go` | 770 | **Core.** `compileEditPlan` validates a submitted plan (structure, elision projections, move symmetry, language rules) and renders the reading diff mechanically. Its own type-definition layer (`lineRange`, `planState`, `plannedReplacement`, `applyPlannedReplacements`, `leadingWhitespace`) is needed by the three rows above it, while its orchestrator calls into all three — a genuine circular dependency at the file level, ported around it (see below). |
+| `elision.go` | 138 | `ElisionLine` — the "kept 12/240 changed lines in 3/7 files" manifest, counted locally, never model-reported. Depends on `editplan.go`'s `compileElisionProjection`, so it ports after `editplan.go` despite the smaller line count (stage 3 discovery — Go's package-internal call graph isn't ordering-constrained the way per-file TS modules are). |
 | `chunk.go` | 1,086 | **Core.** Splits oversized diffs at file → hunk → sub-hunk boundaries into independently valid chunks; mirrors whole-diff analyses into each; merges results. |
 | `rubric.go` | 357 | The system prompt, the protocol version, and `promptSurface()` + its SHA-256. |
 | `tools.go` | 359 | The agent toolbox: `read_file`, `grep` (via `git grep`), `preview_plan`, `submit`, confined to the repo root and bounded at 16 KiB per result. |
 | `meat.go` | 295 | `Abridge` entry point and the agent turn loop, with retention-nudge and fallback. |
 | `anthropic.go` | 279 | Anthropic Messages implementation of `Model`, with retry. |
 | `openai.go` | 456 | OpenAI Responses implementation, incl. streaming and opaque `provider_state` replay. |
+
+**Port-side-only file, no Go source: `plan.ts`.** Discovered in stage 3 while
+starting `moves.ts`: `editplan.go`'s own orchestrator (`compileEditPlan`)
+calls into `moves.go`/`imports.go`/`python.go`, while those three need
+`editplan.go`'s `planState`/`lineRange` types — a circular dependency at the
+Go-file level that only matters once file boundaries become TypeScript
+module boundaries (Go's single-package compilation doesn't care about file
+order). Fixed by extracting `editplan.go`'s pure type-definition layer
+(`lineRange`, `lineReplacement`, `lineFold`, `plannedReplacement`,
+`plannedFold`, `planState`, `newPlanState`, `planState.represented`,
+`applyPlannedReplacements`, `leadingWhitespace`) into `src/meat/plan.ts`,
+built right after `diff.ts` — the same kind of deliberate, documented
+exception `bytes.ts` already is to the one-to-one file mapping. See
+`migration/TARGET.md`'s Layout section and `TODO.md` item 4e for the full
+account.
 
 ## Package `cmd/meat/` — the CLI
 
