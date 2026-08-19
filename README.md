@@ -19,6 +19,7 @@ single merged reading diff — it just takes proportionally longer.
 npm install
 npm run build
 export OPENAI_API_KEY=...   # or ANTHROPIC_API_KEY=... with MEAT_MODEL=claude-...
+                            # or XAI_API_KEY=... (Grok; defaults to grok-4.6)
 node dist/cli/main.js        # reviews HEAD in the current git repo
 ```
 

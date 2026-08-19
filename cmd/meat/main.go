@@ -24,8 +24,8 @@
 //	git show <sha> | meat
 //	git diff main...HEAD | meat
 //
-// It reads OPENAI_API_KEY or ANTHROPIC_API_KEY from the environment
-// (optionally the matching provider base URL, plus MEAT_MODEL / -model).
+// It reads OPENAI_API_KEY, ANTHROPIC_API_KEY, or XAI_API_KEY from the
+// environment (optionally the matching provider base URL, plus MEAT_MODEL / -model).
 package main
 
 import (
@@ -77,6 +77,8 @@ Environment:
   OPENAI_BASE_URL      Optional. Override the OpenAI API base URL.
   ANTHROPIC_API_KEY    API key for Claude models.
   ANTHROPIC_BASE_URL   Optional. Override the Anthropic API base URL.
+  XAI_API_KEY          API key for Grok models (ids starting with grok-).
+  XAI_BASE_URL         Optional. Override the xAI API base URL (default https://api.x.ai/v1).
   MEAT_MODEL           Optional. Default model id.
   MEAT_CACHE           Optional. Cache directory (default ~/.meat; empty disables).
 

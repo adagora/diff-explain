@@ -18,13 +18,17 @@ import { join } from "node:path";
 import {
   type OpenAIModel,
   DefaultOpenAIModel,
+  DefaultGrokModel,
+  DefaultXAIBaseURL,
   DefaultReasoningEffort,
   maxOpenAIOutputTokens,
   newOpenAIModel,
   NewOpenAIFromEnv,
+  NewGrokFromEnv,
   toOpenAIInput,
   openAIResponsesURL,
 } from "../../src/meat/openai.ts";
+import { NewModelFromEnv } from "../../src/meat/provider.ts";
 import { retryConfig } from "../../src/meat/anthropic.ts";
 import { RoleUser, RoleAssistant, textBlock, type Message, type ToolUseBlock, type ProviderStateBlock } from "../../src/meat/model.ts";
 import { Abridge } from "../../src/meat/meat.ts";
@@ -239,10 +243,12 @@ describe("openAIResponsesURL (meat/openai_test.go:219-228, TestOpenAIResponsesUR
     const cases: [string, string][] = [
       ["https://api.openai.com", "https://api.openai.com/v1/responses"],
       ["https://proxy.example/v1/", "https://proxy.example/v1/responses"],
+      ["https://api.x.ai/v1", "https://api.x.ai/v1/responses"],
     ];
     for (const [base, want] of cases) {
       assert.equal(openAIResponsesURL(base), want, `openAIResponsesURL(${JSON.stringify(base)})`);
     }
+    assert.equal(openAIResponsesURL(DefaultXAIBaseURL), "https://api.x.ai/v1/responses");
   });
 
   test("the actual request path matches openAIResponsesURL's contract, end to end", async () => {
@@ -498,5 +504,170 @@ describe("toOpenAIInput opaque replay (H4, no Go precedent)", () => {
   test("invalid JSON provider data throws", () => {
     const messages: Message[] = [{ role: RoleAssistant, content: [{ type: "provider_state", provider: "openai", providerData: s("{not json") }] }];
     assert.throws(() => toOpenAIInput(messages), /not valid JSON/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Grok / xAI — constructor + the CLI's NewModelFromEnv → generate path.
+// ---------------------------------------------------------------------------
+
+const grokEnvKeys = ["OPENAI_API_KEY", "OPENAI_BASE_URL", "XAI_API_KEY", "XAI_BASE_URL", "MEAT_MODEL", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL"] as const;
+
+describe("NewGrokFromEnv", () => {
+  const originalEnv = new Map(grokEnvKeys.map((k) => [k, process.env[k]]));
+  const originalMarkerPath = gatewayConfig.exeDevMarkerPath;
+
+  afterEach(() => {
+    gatewayConfig.exeDevMarkerPath = originalMarkerPath;
+    for (const k of grokEnvKeys) {
+      const v = originalEnv.get(k);
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  test("an explicit XAI_API_KEY uses api.x.ai/v1 and DefaultGrokModel", async () => {
+    for (const k of grokEnvKeys) delete process.env[k];
+    process.env["XAI_API_KEY"] = "xai-explicit";
+    gatewayConfig.exeDevMarkerPath = join(await mkdtemp(join(tmpdir(), "meat-grok-")), "nope");
+    const m = await NewGrokFromEnv(new AbortController().signal, "");
+    assert.equal(m.apiKey, "xai-explicit");
+    assert.equal(m.baseURL, DefaultXAIBaseURL);
+    assert.equal(m.model, DefaultGrokModel);
+    assert.equal(m.model, "grok-4.6");
+    assert.equal(m.reasoningEffort, DefaultReasoningEffort);
+  });
+
+  test("XAI_BASE_URL overrides the default origin", async () => {
+    for (const k of grokEnvKeys) delete process.env[k];
+    process.env["XAI_BASE_URL"] = "https://proxy.example/v1";
+    const m = await NewGrokFromEnv(new AbortController().signal, "grok-4.5");
+    assert.equal(m.apiKey, "");
+    assert.equal(m.baseURL, "https://proxy.example/v1");
+    assert.equal(m.model, "grok-4.5");
+  });
+
+  test("no xAI credential throws naming XAI_API_KEY", async () => {
+    for (const k of grokEnvKeys) delete process.env[k];
+    gatewayConfig.exeDevMarkerPath = join(await mkdtemp(join(tmpdir(), "meat-grok-")), "nope");
+    await assert.rejects(() => NewGrokFromEnv(new AbortController().signal, "grok-4.6"), /no xAI credentials: set XAI_API_KEY, XAI_BASE_URL/);
+  });
+});
+
+describe("Grok CLI path (NewModelFromEnv + generate)", () => {
+  const originalEnv = new Map(grokEnvKeys.map((k) => [k, process.env[k]]));
+
+  afterEach(() => {
+    for (const k of grokEnvKeys) {
+      const v = originalEnv.get(k);
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  async function withGrokStub(
+    handler: (req: IncomingMessage, body: string, res: ServerResponse) => void,
+  ): Promise<{ origin: string; close: () => Promise<void> }> {
+    const server: Server = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => chunks.push(c));
+      req.on("end", () => handler(req, Buffer.concat(chunks).toString("utf8"), res));
+      req.on("error", (err) => {
+        res.writeHead(500);
+        res.end(String(err));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("expected AddressInfo");
+    return {
+      origin: `http://127.0.0.1:${address.port}`,
+      close: () => new Promise((resolve) => server.close(() => resolve())),
+    };
+  }
+
+  function writeCompletedJSON(res: ServerResponse, text: string, inputTokens: number, outputTokens: number): void {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "completed",
+        output: [{ type: "message", status: "completed", content: [{ type: "output_text", text }] }],
+        usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+      }),
+    );
+  }
+
+  test("NewModelFromEnv(grok-4.6) POSTs that id and XAI_API_KEY to XAI_BASE_URL/v1/responses", async () => {
+    for (const k of grokEnvKeys) delete process.env[k];
+    let capturedURL = "";
+    let capturedAuth = "";
+    let capturedModel = "";
+    const stub = await withGrokStub((req, body, res) => {
+      capturedURL = req.url ?? "";
+      capturedAuth = String(req.headers["authorization"] ?? "");
+      capturedModel = (JSON.parse(body) as { model: string }).model;
+      writeCompletedJSON(res, "ok", 3, 1);
+    });
+    process.env["XAI_API_KEY"] = "xai-test-key";
+    process.env["XAI_BASE_URL"] = stub.origin;
+    try {
+      const model = await NewModelFromEnv(new AbortController().signal, "grok-4.6");
+      const resp = await model.generate(new AbortController().signal, "sys", [{ role: RoleUser, content: [textBlock("hi")] }], []);
+      assert.equal(capturedURL, "/v1/responses");
+      assert.equal(capturedAuth, "Bearer xai-test-key");
+      assert.equal(capturedModel, "grok-4.6");
+      assert.equal(resp.content.length, 1);
+      const block = resp.content[0];
+      assert.ok(block !== undefined && block.type === "text" && block.text === "ok");
+      assert.equal(resp.inputTokens, 3);
+      assert.equal(resp.outputTokens, 1);
+    } finally {
+      await stub.close();
+    }
+  });
+
+  test("XAI_API_KEY alone with an empty model argument talks to xAI as grok-4.6", async () => {
+    for (const k of grokEnvKeys) delete process.env[k];
+    let capturedModel = "";
+    let capturedAuth = "";
+    const stub = await withGrokStub((req, body, res) => {
+      capturedAuth = String(req.headers["authorization"] ?? "");
+      capturedModel = (JSON.parse(body) as { model: string }).model;
+      writeCompletedJSON(res, "from-default", 1, 1);
+    });
+    process.env["XAI_API_KEY"] = "xai-only-key";
+    process.env["XAI_BASE_URL"] = stub.origin;
+    try {
+      const model = await NewModelFromEnv(new AbortController().signal, "");
+      const m = model as unknown as { model: string; apiKey: string; baseURL: string };
+      assert.equal(m.model, "grok-4.6");
+      assert.equal(m.apiKey, "xai-only-key");
+      assert.equal(m.baseURL, stub.origin);
+      const resp = await model.generate(new AbortController().signal, "", [{ role: RoleUser, content: [textBlock("hi")] }], []);
+      assert.equal(capturedAuth, "Bearer xai-only-key");
+      assert.equal(capturedModel, "grok-4.6");
+      const block = resp.content[0];
+      assert.ok(block !== undefined && block.type === "text" && block.text === "from-default");
+    } finally {
+      await stub.close();
+    }
+  });
+
+  test("xai/grok-4.6 is sent on the wire as grok-4.6", async () => {
+    for (const k of grokEnvKeys) delete process.env[k];
+    let capturedModel = "";
+    const stub = await withGrokStub((_req, body, res) => {
+      capturedModel = (JSON.parse(body) as { model: string }).model;
+      writeCompletedJSON(res, "ok", 1, 1);
+    });
+    process.env["XAI_API_KEY"] = "xai-test-key";
+    process.env["XAI_BASE_URL"] = stub.origin;
+    try {
+      const model = await NewModelFromEnv(new AbortController().signal, "xai/grok-4.6");
+      await model.generate(new AbortController().signal, "sys", [{ role: RoleUser, content: [textBlock("hi")] }], []);
+      assert.equal(capturedModel, "grok-4.6");
+    } finally {
+      await stub.close();
+    }
   });
 });

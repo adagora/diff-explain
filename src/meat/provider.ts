@@ -4,7 +4,7 @@
 // to exist first; item 4p, the later of the two, lands it).
 
 import { NewAnthropicFromEnv } from "./anthropic.ts";
-import { NewOpenAIFromEnv, DefaultOpenAIModel } from "./openai.ts";
+import { NewOpenAIFromEnv, NewGrokFromEnv, DefaultOpenAIModel, DefaultGrokModel } from "./openai.ts";
 import { type Model } from "./model.ts";
 
 /**
@@ -38,13 +38,34 @@ export function resolveModel(model: string, fallback: string): string {
   return model;
 }
 
+function envNonEmpty(name: string): boolean {
+  const v = process.env[name];
+  return v !== undefined && v !== "";
+}
+
+/**
+ * Built-in default when neither `-model` nor `$MEAT_MODEL` is set. OpenAI's
+ * default stays the built-in unless the process has xAI credentials and no
+ * OpenAI credentials — then `meat` with only `XAI_API_KEY` uses Grok, and
+ * the cache key matches the model that will actually run.
+ *
+ * Env reads only; no network. Empty string and unset are the same (matches
+ * Go's `os.Getenv`).
+ */
+export function defaultModelForEnv(): string {
+  if (!envNonEmpty("OPENAI_API_KEY") && !envNonEmpty("OPENAI_BASE_URL") && (envNonEmpty("XAI_API_KEY") || envNonEmpty("XAI_BASE_URL"))) {
+    return DefaultGrokModel;
+  }
+  return DefaultModel();
+}
+
 /**
  * The CLI model fallback chain: an explicit value wins outright; otherwise
- * `$MEAT_MODEL`; otherwise `DefaultModel()`. No network or credential work,
- * so callers can resolve the cache identity cheaply and offline.
+ * `$MEAT_MODEL`; otherwise `defaultModelForEnv()`. No network, so callers
+ * can resolve the cache identity cheaply and offline.
  */
 export function ResolveModel(model: string): string {
-  return resolveModel(model, DefaultModel());
+  return resolveModel(model, defaultModelForEnv());
 }
 
 /**
@@ -60,15 +81,27 @@ export function isAnthropicModel(model: string): boolean {
 }
 
 /**
- * Go's `NewModelFromEnv` (`meat/provider.go:31-37`, G17): constructs the
- * built-in backend appropriate for `model` — Claude model ids dispatch to
- * Anthropic Messages, every other id to OpenAI Responses. Its only caller
- * in the whole Go tree is `cmd/meat/main.go:130` (item 5d).
+ * After stripping one optional leading `"xai/"`, an id starting with
+ * `"grok-"` dispatches to the xAI backend. Same TrimPrefix-once rule as
+ * `isAnthropicModel`.
+ */
+export function isGrokModel(model: string): boolean {
+  const stripped = model.startsWith("xai/") ? model.slice("xai/".length) : model;
+  return stripped.startsWith("grok-");
+}
+
+/**
+ * Constructs the built-in backend appropriate for `model` — Claude ids to
+ * Anthropic Messages, Grok ids to xAI's OpenAI-compatible Responses API,
+ * every other id to OpenAI Responses.
  */
 export async function NewModelFromEnv(signal: AbortSignal, model: string): Promise<Model> {
   const resolved = ResolveModel(model);
   if (isAnthropicModel(resolved)) {
     return NewAnthropicFromEnv(signal, resolved);
+  }
+  if (isGrokModel(resolved)) {
+    return NewGrokFromEnv(signal, resolved);
   }
   return NewOpenAIFromEnv(signal, resolved);
 }

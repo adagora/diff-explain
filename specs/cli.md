@@ -373,7 +373,8 @@ cross-referenced here:
 
 `main.go` does not itself call `os.Getenv`/`os.LookupEnv` for any of the
 External Surface's env vars. `OPENAI_API_KEY`/`OPENAI_BASE_URL`/
-`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL`/`MEAT_MODEL` resolution is
+`ANTHROPIC_API_KEY`/`ANTHROPIC_BASE_URL`/`XAI_API_KEY`/`XAI_BASE_URL`/
+`MEAT_MODEL` resolution is
 entirely inside `meat.ResolveModel`/`meat.NewModelFromEnv`
 (`providers.md`); `MEAT_CACHE` resolution is entirely inside `cacheDir`
 (`cache.md`); `LESS`/pager selection is entirely inside `render.go`'s

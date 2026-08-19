@@ -108,6 +108,8 @@ Environment:
   OPENAI_BASE_URL      Optional. Override the OpenAI API base URL.
   ANTHROPIC_API_KEY    API key for Claude models.
   ANTHROPIC_BASE_URL   Optional. Override the Anthropic API base URL.
+  XAI_API_KEY          API key for Grok models (ids starting with grok-).
+  XAI_BASE_URL         Optional. Override the xAI API base URL (default https://api.x.ai/v1).
   MEAT_MODEL           Optional. Default model id.
   MEAT_CACHE           Optional. Cache directory (default ~/.meat; empty disables).
 

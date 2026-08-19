@@ -4,43 +4,74 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer, type Server } from "node:http";
-import { ResolveModel, resolveModel, isAnthropicModel, DefaultModel, NewModelFromEnv } from "../../src/meat/provider.ts";
+import { ResolveModel, resolveModel, isAnthropicModel, isGrokModel, DefaultModel, NewModelFromEnv } from "../../src/meat/provider.ts";
+import { DefaultGrokModel, DefaultXAIBaseURL } from "../../src/meat/openai.ts";
 import { gatewayConfig } from "../../src/meat/gateway.ts";
 
+const resolveEnvKeys = ["MEAT_MODEL", "OPENAI_API_KEY", "OPENAI_BASE_URL", "XAI_API_KEY", "XAI_BASE_URL"] as const;
+
+function snapshotEnv(keys: readonly string[]): Map<string, string | undefined> {
+  return new Map(keys.map((k) => [k, process.env[k]]));
+}
+
+function restoreEnvMap(original: Map<string, string | undefined>): void {
+  for (const [k, v] of original) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+}
+
+function clearEnv(keys: readonly string[]): void {
+  for (const k of keys) delete process.env[k];
+}
+
 // Ported from meat/resolvemodel_test.go — pins the precedence the cache key
-// depends on: explicit wins, then $MEAT_MODEL, then the built-in default.
+// depends on: explicit wins, then $MEAT_MODEL, then the built-in default
+// (OpenAI, or Grok when only xAI credentials are set).
 describe("ResolveModel", () => {
-  const originalEnv = process.env["MEAT_MODEL"];
-  const restoreEnv = () => {
-    if (originalEnv === undefined) delete process.env["MEAT_MODEL"];
-    else process.env["MEAT_MODEL"] = originalEnv;
-  };
+  const original = snapshotEnv(resolveEnvKeys);
+
+  afterEach(() => restoreEnvMap(original));
 
   test("explicit wins over env", () => {
     process.env["MEAT_MODEL"] = "env-model";
-    try {
-      assert.equal(ResolveModel("explicit"), "explicit");
-    } finally {
-      restoreEnv();
-    }
+    assert.equal(ResolveModel("explicit"), "explicit");
   });
 
   test("env used when no explicit", () => {
     process.env["MEAT_MODEL"] = "env-model";
-    try {
-      assert.equal(ResolveModel(""), "env-model");
-    } finally {
-      restoreEnv();
-    }
+    assert.equal(ResolveModel(""), "env-model");
   });
 
-  test("default when nothing set", () => {
-    delete process.env["MEAT_MODEL"];
-    try {
-      assert.equal(ResolveModel(""), DefaultModel());
-    } finally {
-      restoreEnv();
-    }
+  test("default when nothing set is the OpenAI built-in", () => {
+    clearEnv(resolveEnvKeys);
+    assert.equal(ResolveModel(""), DefaultModel());
+  });
+
+  test("XAI_API_KEY alone defaults to grok-4.6 so the cache key matches the model that will run", () => {
+    clearEnv(resolveEnvKeys);
+    process.env["XAI_API_KEY"] = "xai-only";
+    assert.equal(ResolveModel(""), "grok-4.6");
+    assert.equal(ResolveModel(""), DefaultGrokModel);
+  });
+
+  test("XAI_BASE_URL alone also selects the Grok default", () => {
+    clearEnv(resolveEnvKeys);
+    process.env["XAI_BASE_URL"] = "https://proxy.example/v1";
+    assert.equal(ResolveModel(""), "grok-4.6");
+  });
+
+  test("OPENAI_API_KEY wins the default over XAI_API_KEY", () => {
+    clearEnv(resolveEnvKeys);
+    process.env["OPENAI_API_KEY"] = "sk-openai";
+    process.env["XAI_API_KEY"] = "xai-also";
+    assert.equal(ResolveModel(""), DefaultModel());
+  });
+
+  test("explicit grok-4.6 wins even when OpenAI credentials are set", () => {
+    process.env["OPENAI_API_KEY"] = "sk-openai";
+    process.env["MEAT_MODEL"] = "env-model";
+    assert.equal(ResolveModel("grok-4.6"), "grok-4.6");
   });
 });
 
@@ -77,13 +108,38 @@ describe("isAnthropicModel", () => {
   });
 });
 
+describe("isGrokModel", () => {
+  test("grok- prefixed ids are Grok", () => {
+    assert.ok(isGrokModel("grok-4.6"));
+    assert.ok(isGrokModel("grok-4.5"));
+    assert.ok(isGrokModel("grok-code-fast-1"));
+  });
+  test("xai/ prefix is stripped before the grok- check", () => {
+    assert.ok(isGrokModel("xai/grok-4.6"));
+  });
+  test("non-grok ids are not Grok", () => {
+    assert.ok(!isGrokModel("gpt-5.6-sol"));
+    assert.ok(!isGrokModel("claude-sonnet-4-6"));
+    assert.ok(!isGrokModel("grok"));
+  });
+  test("xai/ prefix alone, without grok-, is not Grok", () => {
+    assert.ok(!isGrokModel("xai/some-other-model"));
+  });
+  test("empty model id is not Grok", () => {
+    assert.ok(!isGrokModel(""));
+  });
+  test("strips at most one leading xai/ prefix", () => {
+    assert.ok(!isGrokModel("xai/xai/grok-4.6"));
+  });
+});
+
 // Ported from meat/gateway_test.go's TestNewModelFromEnv_* (G17) — these two
 // specifically exercise NewModelFromEnv's dispatch, not gateway discovery
 // itself (already covered in gateway.test.ts, item 4c).
 describe("NewModelFromEnv (meat/gateway_test.go, G17)", () => {
   const originalMarkerPath = gatewayConfig.exeDevMarkerPath;
   const originalReflectionURL = gatewayConfig.reflectionIntegrationsURL;
-  const envKeys = ["OPENAI_API_KEY", "OPENAI_BASE_URL", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "MEAT_MODEL"] as const;
+  const envKeys = ["OPENAI_API_KEY", "OPENAI_BASE_URL", "ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "MEAT_MODEL", "XAI_API_KEY", "XAI_BASE_URL"] as const;
   const originalEnv = new Map(envKeys.map((k) => [k, process.env[k]]));
 
   afterEach(() => {
@@ -141,5 +197,34 @@ describe("NewModelFromEnv (meat/gateway_test.go, G17)", () => {
     const m = model as unknown as { model: string; apiKey: string };
     assert.equal(m.model, "claude-sonnet-4-6");
     assert.equal(m.apiKey, "sk-anthropic");
+  });
+
+  test("a grok- model id dispatches to xAI with the default api.x.ai/v1 base", async () => {
+    process.env["XAI_API_KEY"] = "xai-explicit";
+    delete process.env["XAI_BASE_URL"];
+    delete process.env["OPENAI_API_KEY"];
+    delete process.env["OPENAI_BASE_URL"];
+    const model = await NewModelFromEnv(new AbortController().signal, "grok-4.6");
+    const m = model as unknown as { model: string; apiKey: string; baseURL: string; reasoningEffort: string };
+    assert.equal(m.model, "grok-4.6");
+    assert.equal(m.apiKey, "xai-explicit");
+    assert.equal(m.baseURL, DefaultXAIBaseURL);
+    assert.equal(m.baseURL, "https://api.x.ai/v1");
+    assert.equal(m.reasoningEffort, "medium");
+  });
+
+  test("xai/grok-4.6 is classified as Grok and the stored id drops the xai/ prefix", async () => {
+    process.env["XAI_API_KEY"] = "xai-explicit";
+    delete process.env["XAI_BASE_URL"];
+    const model = await NewModelFromEnv(new AbortController().signal, "xai/grok-4.6");
+    const m = model as unknown as { model: string };
+    assert.equal(m.model, "grok-4.6");
+  });
+
+  test("a grok- id does not fall through to OPENAI_API_KEY", async () => {
+    process.env["OPENAI_API_KEY"] = "sk-openai";
+    delete process.env["XAI_API_KEY"];
+    delete process.env["XAI_BASE_URL"];
+    await assert.rejects(() => NewModelFromEnv(new AbortController().signal, "grok-4.6"), /XAI_API_KEY/);
   });
 });

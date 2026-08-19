@@ -158,6 +158,8 @@ func TestNewModelFromEnv_DefaultsToOpenAIThroughGateway(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("MEAT_MODEL", "")
+	t.Setenv("XAI_API_KEY", "")
+	t.Setenv("XAI_BASE_URL", "")
 	withMarker(t)
 	withReflection(t, `{"integrations":[{"name":"llm","type":"llm"}]}`)
 
@@ -206,5 +208,71 @@ func TestNewOpenAIFromEnv_NoCredentials(t *testing.T) {
 
 	if _, err := NewOpenAIFromEnv(context.Background(), ""); err == nil {
 		t.Errorf("want error when no credentials and not on exe.dev")
+	}
+}
+
+func TestNewGrokFromEnv_PrefersExplicitKey(t *testing.T) {
+	t.Setenv("XAI_API_KEY", "xai-explicit")
+	t.Setenv("XAI_BASE_URL", "")
+	t.Setenv("MEAT_MODEL", "")
+	t.Setenv("OPENAI_API_KEY", "")
+
+	m, err := NewGrokFromEnv(context.Background(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.APIKey != "xai-explicit" {
+		t.Errorf("APIKey = %q, want xai-explicit", m.APIKey)
+	}
+	if m.BaseURL != DefaultXAIBaseURL {
+		t.Errorf("BaseURL = %q, want %q", m.BaseURL, DefaultXAIBaseURL)
+	}
+	if m.Model != DefaultGrokModel {
+		t.Errorf("Model = %q, want %q", m.Model, DefaultGrokModel)
+	}
+	if m.ReasoningEffort != DefaultReasoningEffort {
+		t.Errorf("ReasoningEffort = %q, want %q", m.ReasoningEffort, DefaultReasoningEffort)
+	}
+}
+
+func TestNewGrokFromEnv_NoCredentials(t *testing.T) {
+	t.Setenv("XAI_API_KEY", "")
+	t.Setenv("XAI_BASE_URL", "")
+	if _, err := NewGrokFromEnv(context.Background(), "grok-4.6"); err == nil {
+		t.Errorf("want error when no xAI credentials")
+	}
+}
+
+func TestNewModelFromEnv_GrokUsesXAI(t *testing.T) {
+	t.Setenv("XAI_API_KEY", "xai-explicit")
+	t.Setenv("XAI_BASE_URL", "")
+	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("OPENAI_BASE_URL", "")
+
+	model, err := NewModelFromEnv(context.Background(), "grok-4.6")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, ok := model.(*OpenAIModel)
+	if !ok {
+		t.Fatalf("Grok backend = %T, want *OpenAIModel", model)
+	}
+	if m.Model != "grok-4.6" {
+		t.Errorf("Model = %q, want grok-4.6", m.Model)
+	}
+	if m.APIKey != "xai-explicit" {
+		t.Errorf("APIKey = %q, want xai-explicit", m.APIKey)
+	}
+	if m.BaseURL != "https://api.x.ai/v1" {
+		t.Errorf("BaseURL = %q, want https://api.x.ai/v1", m.BaseURL)
+	}
+}
+
+func TestNewModelFromEnv_GrokDoesNotUseOpenAIKey(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "sk-openai")
+	t.Setenv("XAI_API_KEY", "")
+	t.Setenv("XAI_BASE_URL", "")
+	if _, err := NewModelFromEnv(context.Background(), "grok-4.6"); err == nil {
+		t.Errorf("want error: grok- ids must not fall through to OPENAI_API_KEY")
 	}
 }

@@ -39,20 +39,27 @@ the cross-cutting ones are in `glossary.md` under "Providers". In short:
 
 ### Model resolution & backend dispatch (`provider.go`)
 
-G1. `ResolveModel` applies a three-step fallback with no network or
-    credential work: an explicit model argument wins outright; otherwise
-    `$MEAT_MODEL` is used if set; otherwise the built-in default
-    (`DefaultModel = DefaultOpenAIModel`) applies.
-    — `meat/resolvemodel_test.go:9-14` (explicit wins even with `MEAT_MODEL`
-    set), `:15-20` (env used when no explicit arg), `:21-26` (default when
-    neither is set). Mechanism: `ResolveModel` `meat/provider.go:15-17` →
-    `resolveModel(model, fallback)` `meat/provider.go:19-27`.
+G1. `ResolveModel` applies a fallback with no network: an explicit model
+    argument wins outright; otherwise `$MEAT_MODEL` is used if set; otherwise
+    `defaultModelForEnv` — `DefaultGrokModel` (`grok-4.6`) when xAI
+    credentials (`XAI_API_KEY` / `XAI_BASE_URL`) are set and OpenAI
+    credentials are not, else the built-in OpenAI default
+    (`DefaultModel = DefaultOpenAIModel`). Empty and unset env values are
+    the same. The cache key uses this same resolved id, so `meat` with only
+    `XAI_API_KEY` caches under `grok-4.6`.
+    — `meat/resolvemodel_test.go` (explicit wins even with `MEAT_MODEL`
+    set; env used when no explicit arg; OpenAI default when neither is set;
+    Grok default when only xAI credentials are set). Mechanism:
+    `ResolveModel` → `resolveModel(model, defaultModelForEnv())`.
 
 G2. Backend selection is a pure string-prefix rule applied to the *resolved*
     model id: after stripping an optional leading `anthropic/`, an id
     starting with `claude-` dispatches to the Anthropic backend with that
-    exact id threaded through; any other id (including the default) dispatches
-    to the OpenAI backend.
+    exact id threaded through; after stripping an optional leading `xai/`,
+    an id starting with `grok-` dispatches to xAI's OpenAI-compatible
+    Responses API (`NewGrokFromEnv`, default base `https://api.x.ai/v1`,
+    wire id has `xai/` stripped); any other id (including the OpenAI
+    default) dispatches to the OpenAI backend.
     — Anthropic side: `meat/gateway_test.go:183-198`
     (`TestNewModelFromEnv_ClaudeUsesAnthropic`) — explicit model
     `"claude-sonnet-4-6"` with `ANTHROPIC_API_KEY` set yields a concrete
@@ -62,11 +69,11 @@ G2. Backend selection is a pure string-prefix rule applied to the *resolved*
     explicit model, no credentials, gateway available): `meat/gateway_test.go:155-181`
     (`TestNewModelFromEnv_DefaultsToOpenAI...`) — yields a concrete
     `*OpenAIModel` with `Model="gpt-5.6-sol"`; credential/gateway mechanics of
-    that fixture are the subject of G13 below. Mechanism: `NewModelFromEnv`
-    `meat/provider.go:31-37` → `isAnthropicModel` `meat/provider.go:39-42`
-    (`strings.TrimPrefix(model, "anthropic/")`, then `strings.HasPrefix(model,
-    "claude-")`) → `NewAnthropicFromEnv` (`meat/anthropic.go:48-67`) or
-    `NewOpenAIFromEnv` (`meat/openai.go:49-72`).
+    that fixture are the subject of G13 below. Grok side:
+    `TestNewModelFromEnv_GrokUsesXAI` — explicit `"grok-4.6"` with
+    `XAI_API_KEY` yields `*OpenAIModel` pointed at `https://api.x.ai/v1`.
+    Mechanism: `NewModelFromEnv` → `isAnthropicModel` / `isGrokModel` →
+    `NewAnthropicFromEnv` / `NewGrokFromEnv` / `NewOpenAIFromEnv`.
 
 ### exe.dev managed gateway discovery (`gateway.go`)
 
