@@ -473,6 +473,13 @@ test("usage text is non-empty and documents every flag", () => {
   }
 });
 
+test("usage text documents xAI/Grok credentials", () => {
+  assert.ok(usage.includes("XAI_API_KEY"), "usage text missing XAI_API_KEY");
+  assert.ok(usage.includes("XAI_BASE_URL"), "usage text missing XAI_BASE_URL");
+  assert.ok(usage.includes("grok-"), "usage text missing grok- model-id hint");
+  assert.ok(usage.includes("https://api.x.ai/v1"), "usage text missing default xAI base URL");
+});
+
 // Regression test: found while verifying item 6 (Packaging)'s "bin wiring"
 // checklist item against a real `npm install --global` of a packed
 // tarball. npm's bin wiring invokes this file through a symlink (e.g.
@@ -490,4 +497,12 @@ test("main() runs when invoked through a symlink, matching npm's bin wiring", ()
   const result = spawnSync(process.execPath, [link, "-h"], { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" });
   assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
   assert.ok(result.stderr.includes("Usage:"), `expected usage text on stderr, got:\n${JSON.stringify(result.stderr)}`);
+});
+
+test("CLI -h (the real main() entry) documents XAI_API_KEY and Grok", () => {
+  const result = spawnSync(process.execPath, [mainModulePath, "-h"], { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" });
+  assert.equal(result.status, 0, `stderr:\n${result.stderr}`);
+  assert.ok(result.stderr.includes("XAI_API_KEY"), `expected XAI_API_KEY in -h output, got:\n${JSON.stringify(result.stderr)}`);
+  assert.ok(result.stderr.includes("XAI_BASE_URL"), `expected XAI_BASE_URL in -h output, got:\n${JSON.stringify(result.stderr)}`);
+  assert.ok(result.stderr.includes("https://api.x.ai/v1"), `expected api.x.ai default in -h output, got:\n${JSON.stringify(result.stderr)}`);
 });

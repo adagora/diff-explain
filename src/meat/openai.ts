@@ -47,6 +47,15 @@ import { type Model, type Message, type Block, type Tool, type Response } from "
 /** Go's `DefaultOpenAIModel` (`meat/openai.go:17`). */
 export const DefaultOpenAIModel = "gpt-5.6-sol";
 
+/**
+ * Default Grok model id (xAI Responses API). Used when the resolved model is
+ * a `grok-*` id, and as the CLI default when only xAI credentials are set.
+ */
+export const DefaultGrokModel = "grok-4.6";
+
+/** Default xAI origin, including the `/v1` prefix the Responses URL builder recognizes. */
+export const DefaultXAIBaseURL = "https://api.x.ai/v1";
+
 /** Go's `DefaultReasoningEffort` (`meat/openai.go:21`). */
 export const DefaultReasoningEffort = "medium";
 
@@ -131,6 +140,41 @@ export async function NewOpenAIFromEnv(signal: AbortSignal, model: string): Prom
     return newOpenAIModel({ model: resolvedModel, baseURL: `${base}/openai`, reasoningEffort: DefaultReasoningEffort });
   }
   throw new Error("no OpenAI credentials: set OPENAI_API_KEY, OPENAI_BASE_URL, or run on an exe.dev VM with an attached 'llm' integration");
+}
+
+/**
+ * Strip one optional leading `xai/` so a user-facing id like `xai/grok-4.6`
+ * reaches api.x.ai as `grok-4.6`. Matches `strings.TrimPrefix` (at most once).
+ */
+function grokAPIModel(model: string): string {
+  return model.startsWith("xai/") ? model.slice("xai/".length) : model;
+}
+
+/**
+ * Builds an OpenAI-compatible model pointed at xAI. Resolution:
+ *  1. If `XAI_API_KEY` or `XAI_BASE_URL` is set, use it. An empty base URL
+ *     becomes `DefaultXAIBaseURL` (`https://api.x.ai/v1`) so `generate` does
+ *     not fall through to api.openai.com.
+ *  2. Otherwise throw. No exe.dev gateway fallback — the gateway only
+ *     exposes `/openai` and `/anthropic` prefixes.
+ *
+ * `model` falls back to `$MEAT_MODEL`, then `DefaultGrokModel`. The optional
+ * `xai/` prefix is stripped before the id is stored on the model (the wire id).
+ */
+export async function NewGrokFromEnv(signal: AbortSignal, model: string): Promise<OpenAIModel> {
+  void signal;
+  const resolvedModel = grokAPIModel(resolveModel(model, DefaultGrokModel));
+  const key = process.env["XAI_API_KEY"] ?? "";
+  const baseURL = process.env["XAI_BASE_URL"] ?? "";
+  if (key !== "" || baseURL !== "") {
+    return newOpenAIModel({
+      apiKey: key,
+      model: resolvedModel,
+      baseURL: baseURL !== "" ? baseURL : DefaultXAIBaseURL,
+      reasoningEffort: DefaultReasoningEffort,
+    });
+  }
+  throw new Error("no xAI credentials: set XAI_API_KEY, XAI_BASE_URL");
 }
 
 // ---------------------------------------------------------------------------

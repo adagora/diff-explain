@@ -220,6 +220,7 @@ func TestOpenAIResponsesURL(t *testing.T) {
 	for base, want := range map[string]string{
 		"https://api.openai.com":    "https://api.openai.com/v1/responses",
 		"https://proxy.example/v1/": "https://proxy.example/v1/responses",
+		"https://api.x.ai/v1":       "https://api.x.ai/v1/responses",
 	} {
 		if got := openAIResponsesURL(base); got != want {
 			t.Errorf("openAIResponsesURL(%q) = %q, want %q", base, got, want)

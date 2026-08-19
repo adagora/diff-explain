@@ -150,7 +150,8 @@ reference earlier vocabulary.
 ## External surface the port must preserve
 
 **Environment variables.** `OPENAI_API_KEY`, `OPENAI_BASE_URL`,
-`ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `MEAT_MODEL`, `MEAT_CACHE` (empty
+`ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `XAI_API_KEY`, `XAI_BASE_URL`,
+`MEAT_MODEL`, `MEAT_CACHE` (empty
 disables caching), `LESS`, plus two test-only gates: `UPDATE_GOLDEN`,
 `CHUNK_SANITY_DIFF`.
 

@@ -155,9 +155,10 @@ except on `for ` lines and `;` inside trailing `//` comments. See
 
 **Backend dispatch** — the model-id-string rule that picks which built-in
 `Model` implementation to construct: an id starting with `claude-` (after
-stripping an optional `anthropic/` prefix) dispatches to Anthropic; every
-other id dispatches to OpenAI. `meat/provider.go:31-42`. See `providers.md`
-G2.
+stripping an optional `anthropic/` prefix) dispatches to Anthropic; an id
+starting with `grok-` (after stripping an optional `xai/` prefix) dispatches
+to xAI; every other id dispatches to OpenAI. `meat/provider.go`. See
+`providers.md` G2.
 
 **exe.dev managed gateway / managed gateway discovery** — an operator-hosted
 reverse proxy that forwards requests to a real provider with credentials

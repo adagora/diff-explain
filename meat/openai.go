@@ -16,6 +16,14 @@ import (
 // DefaultOpenAIModel is meat's default OpenAI Responses API model.
 const DefaultOpenAIModel = "gpt-5.6-sol"
 
+// DefaultGrokModel is meat's default xAI Grok model. Used when the resolved
+// model is a grok-* id, and as the CLI default when only xAI credentials are set.
+const DefaultGrokModel = "grok-4.6"
+
+// DefaultXAIBaseURL is the xAI Responses API origin, including /v1 so
+// openAIResponsesURL appends /responses rather than /v1/responses.
+const DefaultXAIBaseURL = "https://api.x.ai/v1"
+
 // DefaultReasoningEffort is the thinking level used by OpenAIModel when no
 // explicit effort is configured.
 const DefaultReasoningEffort = "medium"
@@ -69,6 +77,41 @@ func NewOpenAIFromEnv(ctx context.Context, model string) (*OpenAIModel, error) {
 	}
 
 	return nil, fmt.Errorf("no OpenAI credentials: set OPENAI_API_KEY, OPENAI_BASE_URL, or run on an exe.dev VM with an attached 'llm' integration")
+}
+
+func grokAPIModel(model string) string {
+	return strings.TrimPrefix(model, "xai/")
+}
+
+// NewGrokFromEnv builds an OpenAI-compatible model pointed at xAI.
+//
+// Resolution order:
+//  1. If XAI_API_KEY (or XAI_BASE_URL) is set, use it. An empty base URL
+//     becomes DefaultXAIBaseURL so Generate does not fall through to
+//     api.openai.com.
+//  2. Otherwise, error. No exe.dev gateway fallback — the gateway only
+//     exposes /openai and /anthropic prefixes.
+//
+// model falls back to $MEAT_MODEL, then DefaultGrokModel. One leading xai/
+// prefix is stripped before the id is stored on the model (the wire id).
+func NewGrokFromEnv(_ context.Context, model string) (*OpenAIModel, error) {
+	model = grokAPIModel(resolveModel(model, DefaultGrokModel))
+
+	key := os.Getenv("XAI_API_KEY")
+	baseURL := os.Getenv("XAI_BASE_URL")
+	if key != "" || baseURL != "" {
+		if baseURL == "" {
+			baseURL = DefaultXAIBaseURL
+		}
+		return &OpenAIModel{
+			APIKey:          key,
+			Model:           model,
+			BaseURL:         baseURL,
+			ReasoningEffort: DefaultReasoningEffort,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("no xAI credentials: set XAI_API_KEY, XAI_BASE_URL")
 }
 
 // --- wire types ---
