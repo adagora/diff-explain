@@ -29,8 +29,18 @@ node src/cli/main.ts <revision-or-range>
 ```
 
 Common flags: `-staged` (review the index), `-w` (review unstaged changes),
-`-json` (machine-readable output), `-h` (full usage). Results are cached
-under `~/.meat`; set `MEAT_CACHE` to relocate it.
+`-json` (machine-readable output), `-look` (shape/color/length of the diff,
+no model), `-h` (full usage). Results are cached under `~/.meat`; set
+`MEAT_CACHE` to relocate it.
+
+Look at a diff from the CLI without an API key — shape (`+`/`-`/`.` pattern),
+length (`+N -M ~C`), then the unified-diff text itself:
+
+```
+git diff | node src/cli/main.ts -look
+node src/cli/main.ts -look -staged
+node src/cli/main.ts -look HEAD~3
+```
 
 Dev loop: `npm run check` (type-check + `node --test`, includes the
 conformance suite against `conformance/vectors/`).
