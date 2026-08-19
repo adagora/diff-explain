@@ -49,9 +49,10 @@ import { type Request, type Result, Abridge } from "../meat/meat.ts";
 import { ResolveModel, NewModelFromEnv } from "../meat/provider.ts";
 import { RubricHash } from "../meat/rubric.ts";
 import { ElisionLine } from "../meat/elision.ts";
-import { isTerminal, renderResult, renderJSON, type Writer } from "./render.ts";
+import { isTerminal, renderResult, renderJSON, palette, gitWantsColor, type Writer } from "./render.ts";
 import { cacheDir, cacheKey, cacheLoad, cacheStore } from "./cache.ts";
 import { stdinIsPiped, readAllStdin } from "./stdin.ts";
+import { formatDiffLook } from "./shape.ts";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -61,9 +62,9 @@ function goTrimSpaceString(s: string): string {
   return decodeUTF8(trimSpace(encodeUTF8(s)));
 }
 
-// Go's `usage` constant (`cmd/meat/main.go:44-86`), reproduced verbatim —
-// untested by any Go test (specs/cli.md Open questions), kept byte-for-byte
-// anyway since it is literal copy the user reads.
+// Go's `usage` constant (`cmd/meat/main.go:44-86`) plus TypeScript-only
+// `-look` (no-model shape/color/length view). The Go wording is otherwise
+// kept as the user-facing copy.
 export const usage = `meat — abridge a diff into a "reading diff"
 
 Usage:
@@ -74,10 +75,16 @@ Usage:
   meat -w              Abridge the unstaged working-tree changes: git diff.
   git show <sha> | meat   Abridge the diff piped on stdin.
   git diff | meat         Abridge the working-tree diff piped on stdin.
+  meat -look              Look at the diff's shape, color, and length (no model).
+  git diff | meat -look   Same, from a piped unified diff.
 
 meat reads a unified diff (from stdin, from a named revision or range, or HEAD
 when stdin is a terminal), asks an LLM to drop everything not worth reading, and
 prints the abridged diff plus a one-line summary.
+
+-look skips the model: it prints the spatial add/remove/context shape, an
+explicit length (+added -deleted ~context), and the unified-diff text itself.
+Use the same diff sources as abridge (stdin, revision, range, -staged, -w).
 
 Results are cached under ~/.meat keyed by the SHA of (rubric/compiler protocol +
 model + diff contents), so re-running on an unchanged diff is instant; editing
@@ -93,6 +100,7 @@ Flags:
   -staged         Read the staged changes (git diff --staged).
   -w              Read the unstaged working-tree changes (git diff).
   -json           Emit the result as JSON on stdout (no color, no pager).
+  -look           Print shape, color, and length of the diff, then the unified-diff text. No model, no API key.
   -h, --help      Show this help.
 
 Environment:
@@ -118,6 +126,7 @@ export interface ParsedFlags {
   readonly staged: boolean;
   readonly worktree: boolean;
   readonly jsonOut: boolean;
+  readonly look: boolean;
   readonly positional: readonly string[];
 }
 
@@ -140,10 +149,11 @@ function parseGoBool(value: string): boolean | null {
 /**
  * Go's `flag` package parsing algorithm (`flag.go`'s `parseOne`),
  * reproduced by hand — see the file header's note on why not `parseArgs`.
- * Registers the same five flags `cmd/meat/main.go:92-96` does: `-model`
- * (string), `-no-cache`/`-staged`/`-w`/`-json` (bool). `-h`/`-help` are
- * recognized without being registered, matching Go's special case
- * (`flag.go`: an undefined `help`/`h` name triggers usage, not an error).
+ * Registers the Go flags `cmd/meat/main.go:92-96` (`-model` string,
+ * `-no-cache`/`-staged`/`-w`/`-json` bool) plus TypeScript-only `-look`
+ * (bool, no-model shape/color/length view). `-h`/`-help` are recognized
+ * without being registered, matching Go's special case (`flag.go`: an
+ * undefined `help`/`h` name triggers usage, not an error).
  */
 export function parseFlags(argv: readonly string[]): ParseFlagsResult {
   let model = "";
@@ -151,6 +161,7 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
   let staged = false;
   let worktree = false;
   let jsonOut = false;
+  let look = false;
   let i = 0;
 
   while (i < argv.length) {
@@ -181,7 +192,7 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
       name = name.slice(0, eq);
     }
 
-    const isBoolFlag = name === "no-cache" || name === "staged" || name === "w" || name === "json";
+    const isBoolFlag = name === "no-cache" || name === "staged" || name === "w" || name === "json" || name === "look";
     if (!isBoolFlag && name !== "model") {
       if (name === "help" || name === "h") {
         return { kind: "help" };
@@ -206,6 +217,7 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
       if (name === "no-cache") noCache = boolVal;
       else if (name === "staged") staged = boolVal;
       else if (name === "w") worktree = boolVal;
+      else if (name === "look") look = boolVal;
       else jsonOut = boolVal;
       continue;
     }
@@ -223,7 +235,7 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
     model = value;
   }
 
-  return { kind: "ok", flags: { model, noCache, staged, worktree, jsonOut, positional: argv.slice(i) } };
+  return { kind: "ok", flags: { model, noCache, staged, worktree, jsonOut, look, positional: argv.slice(i) } };
 }
 
 // ---------------------------------------------------------------------------
@@ -468,7 +480,7 @@ export async function main(): Promise<void> {
     process.stderr.write(`${parsed.message}\n${usage}`);
     process.exit(2);
   }
-  const { model: modelFlag, noCache, staged, worktree, jsonOut, positional } = parsed.flags;
+  const { model: modelFlag, noCache, staged, worktree, jsonOut, look, positional } = parsed.flags;
 
   let diff: Uint8Array;
   let source: string;
@@ -479,6 +491,16 @@ export async function main(): Promise<void> {
   }
   if (trimSpace(diff).length === 0) {
     fatal(`no diff to read (${source})`);
+  }
+
+  if (look) {
+    // No model, no cache, no API key. Color follows the same tty + git
+    // color.diff policy as abridge rendering; piped output stays plain.
+    const out = processWriter(process.stdout);
+    const tty = isTerminal(out);
+    const color = tty && gitWantsColor(tty);
+    process.stdout.write(formatDiffLook(diff, palette(color)));
+    return;
   }
 
   // Progress feedback is strictly interactive: only when BOTH stdout and

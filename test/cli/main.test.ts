@@ -443,6 +443,15 @@ describe("parseFlags (cmd/meat/main.go:88-103, hand-rolled per Go's flag package
     const r = parseFlags(["-staged", "-json", "-model=x"]);
     assert.ok(r.kind === "ok" && r.flags.staged && r.flags.jsonOut && r.flags.model === "x" && r.flags.positional.length === 0);
   });
+
+  test("-look is a bool flag and defaults to false", () => {
+    const off = parseFlags([]);
+    assert.ok(off.kind === "ok" && off.flags.look === false);
+    const on = parseFlags(["-look"]);
+    assert.ok(on.kind === "ok" && on.flags.look === true);
+    const withSource = parseFlags(["-look", "-staged"]);
+    assert.ok(withSource.kind === "ok" && withSource.flags.look && withSource.flags.staged);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -459,7 +468,7 @@ describe("fatalMessage (cmd/meat/main.go:319-325, Invariants)", () => {
 });
 
 test("usage text is non-empty and documents every flag", () => {
-  for (const flag of ["-model", "-no-cache", "-staged", "-w", "-json"]) {
+  for (const flag of ["-model", "-no-cache", "-staged", "-w", "-json", "-look"]) {
     assert.ok(usage.includes(flag), `usage text missing ${flag}`);
   }
 });
