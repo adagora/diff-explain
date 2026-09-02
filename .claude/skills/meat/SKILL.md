@@ -35,18 +35,31 @@ Run it in the git repo whose diff the user asked about.
 ## 3. Pick the mode
 
 - **Abridge** (default): meat calls a model and prints a reading diff. Needs `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `XAI_API_KEY` (set `MEAT_MODEL` when the default model is not the one you want).
-- **Look** (`-look`): shape, color, length, then the unified-diff text. No model, no API key. Use this when there is no key, or the user asked to look at the diff without abridging.
+- **Look** (`-look`): shape, color, and length, then the unified-diff text. No model, no API key. Use this when there is no key, or the user asked to look at the diff without abridging.
 - **JSON** (`-json`): machine-readable output on stdout. Add it when the caller needs to parse the result.
 
 **Done when** the argv includes `-look` if abridge cannot run (no key), includes `-json` if the caller needs JSON, and otherwise is a plain abridge.
 
-## 4. Run meat
+## 4. Supply a credential when the environment has none
+
+meat reads its key from the environment and does NOT load a `.env` itself. If an abridge fails with `no OpenAI credentials` (or the Anthropic/xAI equivalent) and this checkout has a `.env`, let node load it — same argv, one extra flag before the script path:
+
+```
+node --env-file=.env src/cli/main.ts <same args>
+node --env-file=.env dist/cli/main.js <same args>
+```
+
+That file is also where `MEAT_MODEL` is pinned, so this route picks up the intended model too. Never print the key or echo the file.
+
+**Done when** the run has a credential from the environment or from `--env-file`, or `-look` was chosen because no key is obtainable.
+
+## 5. Run meat
 
 Execute the launch line with the source from step 2 and the mode from step 3.
 
-**Done when** meat printed a reading diff, a `-look` shape/length/unified view, or `-json` output — or a clear failure (`meat: …`, or usage from `-h`). A missing-key abridge error is not success: obtain a key, or rerun with `-look`.
+**Done when** meat printed a reading diff, a `-look` shape/length/unified view, or `-json` output — or a clear failure (`meat: …`, or usage from `-h`). A missing-key abridge error is not success: supply the credential per step 4, or rerun with `-look`.
 
-## 5. Return meat's output
+## 6. Return meat's output
 
 Give the user meat's stdout (plus any `meat:` status line on stderr). Further flags and env: `node src/cli/main.ts -h` and `README.md`.
 
