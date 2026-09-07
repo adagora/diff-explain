@@ -28,6 +28,19 @@ const SOURCE_TOKENS = ["HEAD", "revision", "range", "stdin"] as const;
 const MODE_FLAGS = ["-staged", "-w", "-look", "-json"] as const;
 const ENV_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "XAI_API_KEY", "MEAT_MODEL"] as const;
 
+test("show-me is discoverable from every host and resolves beside the canonical meat skill", () => {
+  const canonical = discoveryPath(".claude/skills", "show-me");
+  const parsed = parseSkillMarkdown(readFileSync(canonical, "utf8"));
+  assert.equal(parsed.fields["name"], "show-me");
+  assert.ok(parsed.fields["description"]?.trim());
+  for (const root of HOST_SKILL_ROOTS) {
+    const discovered = discoveryPath(root, "show-me");
+    assert.equal(realpathSync(discovered), realpathSync(canonical));
+    const meatPath = realpathSync(discoveryPath(root, "meat"));
+    assert.equal(realpathSync(join(dirname(meatPath), "../show-me/SKILL.md")), realpathSync(canonical));
+  }
+});
+
 interface ParsedSkill {
   readonly raw: string;
   readonly fields: Record<string, string>;

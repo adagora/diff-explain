@@ -1,5 +1,11 @@
 # meat: Go → TypeScript migration
 
+> Historical migration runbook. The TypeScript CLI now exists in `src/`.
+> For current development, start with [AGENTS.md](../AGENTS.md) and
+> [README.md](../README.md). The original stages below are preserved as context;
+> they are not instructions to restart the port. The current Node requirement
+> is in `package.json`, superseding the original Node 20 target below.
+
 This directory is the preparation kit for porting `meat` from Go to TypeScript.
 It contains no TypeScript. Its job is to make the port a mechanical exercise by
 first turning the Go codebase into language-neutral specifications, then
