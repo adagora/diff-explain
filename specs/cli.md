@@ -1,5 +1,32 @@
 # cli
 
+## TypeScript additions (current behavior)
+
+`-agent codex|claude` launches a fresh subscription CLI review using the same
+diff sources. It checks login before launch, sends the packet and installed
+show-me guidance via stdin, and forwards output. It never enters the meat
+provider/cache/compiler path. It rejects combinations with `-prompt`, `-look`,
+`-json`, `-model`, or `-no-cache`. Missing CLI, unconfirmed login, or child
+failure exits 1 with no API fallback; unknown/empty agent names exit 2.
+See `src/cli/agent.ts` and `test/cli/agent.test.ts` for auth/environment contracts.
+
+The Go-cited contract below is the migration baseline. The active CLI also has
+`-look` (offline shape/counts/raw diff) and `-prompt` (offline Markdown packet).
+See `src/cli/shape.ts`, `src/cli/prompt.ts`, and their `test/cli/` tests.
+
+`-prompt` accepts the existing stdin/revision/range/staged/worktree sources and
+boolean flag spellings. It emits instructions, source label, input byte length,
+SHA-256, and full UTF-8-decoded diff. It does not truncate, call a provider, use
+the cache, color output, or page. Invalid UTF-8 follows the existing text
+boundary decoder; the hash always covers the original bytes. A trailing newline
+is added before the closing Markdown fence if needed. Fences are longer than
+every backtick run in the input so embedded Markdown stays inside the diff.
+This is review input, not an engine-compiled result or a reduction in diff size.
+
+Combining `-prompt` with `-look` or `-json` is a flag error (exit 2) before reading
+input. Empty input retains exit 1. Model/cache flags have no effect in this mode.
+The packet prompt is separate from the rubric and does not change cache identity.
+
 > Status: stage 1 ✅ | stage 2 ✅
 > Go sources: `cmd/meat/main.go`, `cmd/meat/stdin.go`, `cmd/meat/isatty_*.go`
 > Go tests: `cmd/meat/readdiff_test.go` (7 tests — revision/range resolution,

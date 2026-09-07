@@ -53,6 +53,8 @@ import { isTerminal, renderResult, renderJSON, palette, gitWantsColor, type Writ
 import { cacheDir, cacheKey, cacheLoad, cacheStore } from "./cache.ts";
 import { stdinIsPiped, readAllStdin } from "./stdin.ts";
 import { formatDiffLook } from "./shape.ts";
+import { formatReviewPrompt } from "./prompt.ts";
+import { reviewWithAgent } from "./agent.ts";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -101,6 +103,8 @@ Flags:
   -w              Read the unstaged working-tree changes (git diff).
   -json           Emit the result as JSON on stdout (no color, no pager).
   -look           Print shape, color, and length of the diff, then the unified-diff text. No model, no API key.
+  -prompt         Export a Markdown review packet for your existing agent. No model, no API key.
+  -agent string   Run a subscription CLI review: codex or claude (no meat API call).
   -h, --help      Show this help.
 
 Environment:
@@ -129,6 +133,8 @@ export interface ParsedFlags {
   readonly worktree: boolean;
   readonly jsonOut: boolean;
   readonly look: boolean;
+  readonly prompt: boolean;
+  readonly agent: string;
   readonly positional: readonly string[];
 }
 
@@ -164,6 +170,8 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
   let worktree = false;
   let jsonOut = false;
   let look = false;
+  let prompt = false;
+  let agent = "";
   let i = 0;
 
   while (i < argv.length) {
@@ -194,8 +202,8 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
       name = name.slice(0, eq);
     }
 
-    const isBoolFlag = name === "no-cache" || name === "staged" || name === "w" || name === "json" || name === "look";
-    if (!isBoolFlag && name !== "model") {
+    const isBoolFlag = name === "no-cache" || name === "staged" || name === "w" || name === "json" || name === "look" || name === "prompt";
+    if (!isBoolFlag && name !== "model" && name !== "agent") {
       if (name === "help" || name === "h") {
         return { kind: "help" };
       }
@@ -220,6 +228,7 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
       else if (name === "staged") staged = boolVal;
       else if (name === "w") worktree = boolVal;
       else if (name === "look") look = boolVal;
+      else if (name === "prompt") prompt = boolVal;
       else jsonOut = boolVal;
       continue;
     }
@@ -234,10 +243,23 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
     if (!hasValue) {
       return { kind: "error", message: `flag needs an argument: -${name}` };
     }
-    model = value;
+    if (name === "agent" && value === "") {
+      return { kind: "error", message: "-agent requires codex or claude" };
+    }
+    if (name === "agent") agent = value;
+    else model = value;
   }
 
-  return { kind: "ok", flags: { model, noCache, staged, worktree, jsonOut, look, positional: argv.slice(i) } };
+  if (prompt && (look || jsonOut)) {
+    return { kind: "error", message: "-prompt cannot be combined with -look or -json" };
+  }
+  if (agent !== "" && agent !== "codex" && agent !== "claude") {
+    return { kind: "error", message: "-agent must be codex or claude" };
+  }
+  if (agent !== "" && (prompt || look || jsonOut || model !== "" || noCache)) {
+    return { kind: "error", message: "-agent cannot combine with -prompt, -look, -json, -model, or -no-cache" };
+  }
+  return { kind: "ok", flags: { model, noCache, staged, worktree, jsonOut, look, prompt, agent, positional: argv.slice(i) } };
 }
 
 // ---------------------------------------------------------------------------
@@ -482,7 +504,7 @@ export async function main(): Promise<void> {
     process.stderr.write(`${parsed.message}\n${usage}`);
     process.exit(2);
   }
-  const { model: modelFlag, noCache, staged, worktree, jsonOut, look, positional } = parsed.flags;
+  const { model: modelFlag, noCache, staged, worktree, jsonOut, look, prompt, agent, positional } = parsed.flags;
 
   let diff: Uint8Array;
   let source: string;
@@ -493,6 +515,20 @@ export async function main(): Promise<void> {
   }
   if (trimSpace(diff).length === 0) {
     fatal(`no diff to read (${source})`);
+  }
+
+  if (prompt) {
+    process.stdout.write(formatReviewPrompt(diff, source));
+    return;
+  }
+
+  if (agent !== "") {
+    try {
+      await reviewWithAgent(agent, formatReviewPrompt(diff, source));
+    } catch (err) {
+      fatal(errorMessage(err));
+    }
+    return;
   }
 
   if (look) {
