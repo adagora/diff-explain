@@ -1,4 +1,27 @@
-# Coverage ledger
+# Current contract index and historical coverage ledger
+
+Start with [spec conventions](README.md). The active implementation is
+TypeScript. This table routes current behavior; the historical tables below
+record Go spec extraction and do not measure today's implementation or checks.
+
+| Concern | Contract | Active source | Evidence |
+|---|---|---|---|
+| Sources, flags, offline modes, native agent launch | [cli](cli.md) | [CLI](../src/cli/main.ts), [packet](../src/cli/prompt.ts), [agent](../src/cli/agent.ts) | [CLI tests](../test/cli/) |
+| Byte parsing and layout | [diff](diff.md) | [bytes](../src/meat/bytes.ts), [diff](../src/meat/diff.ts) | [byte tests](../test/meat/bytes.test.ts), [diff tests](../test/meat/diff.test.ts) |
+| Edit-plan compilation and structure | [editplan](editplan.md), [imports](imports.md), [moves](moves.md), [python](python.md) | [compiler](../src/meat/editplan.ts), [plan types](../src/meat/plan.ts) | [engine tests](../test/meat/), [conformance](../test/conformance.test.ts) |
+| Chunking and cross-chunk limits | [chunk](chunk.md) | [chunk](../src/meat/chunk.ts) | [chunk tests](../test/meat/chunk.test.ts) |
+| API loop, fallback, usage | [agent-loop](agent-loop.md) | [engine](../src/meat/meat.ts) | [engine loop tests](../test/meat/meat.test.ts) |
+| Context tools and plan feedback | [tools](tools.md) | [tools](../src/meat/tools.ts) | [tool tests](../test/meat/tools.test.ts), [loop tests](../test/meat/meat.test.ts) |
+| Model protocol and providers | [model](model.md), [providers](providers.md) | [model](../src/meat/model.ts), [provider](../src/meat/provider.ts) | [provider tests](../test/meat/) |
+| Prompt/compiler identity | [rubric](rubric.md) | [rubric](../src/meat/rubric.ts) | [rubric tests](../test/meat/rubric.test.ts), [conformance](../test/conformance.test.ts) |
+| Cache and output | [cache](cache.md), [render](render.md), [elision](elision.md) | [cache](../src/cli/cache.ts), [render](../src/cli/render.ts) | [CLI tests](../test/cli/) |
+| Vocabulary, limits, fixtures | [glossary](glossary.md), [constants](constants.md), [test infrastructure](test-infrastructure.md) | Follow subject owners above | Baseline and current evidence are labelled in each subject |
+| Proposed agent operations | [agent interface](agent-interface.md) | Unimplemented | [Roadmap gates](../docs/roadmap.md) |
+
+System relationships and documentation authority are maintained in
+[system design](../docs/system-design.md).
+
+## Historical Go specification coverage
 
 The progress ledger for stages 1 and 2. Each stage's exit gate is this table
 fully ticked in its column.

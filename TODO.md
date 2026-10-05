@@ -1,4 +1,15 @@
-# Stage 3 TODO — TypeScript port ledger
+# Plans and historical port ledger
+
+Current work is planned in [docs/roadmap.md](docs/roadmap.md), with
+[system design](docs/system-design.md) explaining the whole system.
+
+The ledger below is archived migration history. Its fixed-order instructions,
+temporary failures, counts, and runtime targets describe stages of the port;
+they do not describe the current task or current check results. Use
+[README](README.md), [AGENTS](AGENTS.md), and [current spec index](specs/INDEX.md)
+for present behavior. Existing item numbers remain stable for source citations.
+
+## Archived stage 3 TODO — TypeScript port ledger
 
 The progress ledger for stage 3 (`migration/prompts/stage3-port.md`). Order
 below is **fixed** — do not reorder items, only tick them off top to bottom,

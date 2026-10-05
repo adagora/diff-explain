@@ -4,6 +4,34 @@ Shared vocabulary, defined once. Link here from subject specs rather than
 redefining terms locally. Terms are grouped by the subject that owns them;
 grouping is informational, not a restriction on where a term may be used.
 
+## Current review workflows ([cli](cli.md))
+
+**Review packet** — the full input diff plus instructions, source label, byte
+count and digest, emitted locally by `-prompt`. It is input for an agent.
+Evidence: [prompt.ts](../src/cli/prompt.ts).
+
+**Current-session explanation** — an agent reads a packet and relevant
+evidence within its existing session; meat makes no model call to create the
+packet. The explanation carries the agent's evidential limits.
+
+**Fresh subscription review** — `-agent codex|claude` launches a separate
+signed-in CLI with the packet. It uses the external CLI's allowance and
+produces an agent-authored explanation.
+Evidence: [agent.ts](../src/cli/agent.ts).
+
+**API engine run** — the loop that obtains and compiles an edit plan, for one
+whole diff or one chunk. This is the scope of [agent-loop](agent-loop.md);
+it is distinct from an external subscription process.
+
+**Input digest** — the packet's SHA-256 identifies original diff bytes. It
+does not identify the surrounding repository snapshot or establish source
+authenticity. Evidence: [prompt.ts](../src/cli/prompt.ts).
+
+Proposed snapshot, execution-plan, receipt and witness contracts are defined
+in [agent interface](agent-interface.md). They are not current output fields.
+An execution plan selects review work; the edit plan below selects source
+elisions.
+
 ## Edit plans (`editplan.md`)
 
 **Edit plan** — the model- or hand-authored set of `remove` / `replace` /

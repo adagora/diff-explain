@@ -4,6 +4,17 @@ Read `README.md` for usage. The active product is the TypeScript CLI in `src/`.
 The user's current instructions determine task scope; historical migration
 prompts are reference material, not an instruction to resume porting loops.
 
+## Orient before expanding context
+
+- [System design](docs/system-design.md) owns the architecture and document
+  authority map; [roadmap](docs/roadmap.md) owns proposed work and acceptance gates.
+- [Spec index](specs/INDEX.md) routes current contracts to source and tests.
+  Read the relevant slice, then follow evidence links as needed.
+- [Agent interface](specs/agent-interface.md) is explicitly proposed. Do not
+  use its logical names as existing flags, tools, types, or output guarantees.
+- Match the requested outcome and diff source before choosing a workflow.
+  See [agent workflow](docs/agent-workflow.md) for evidence and handoff rules.
+
 ## Commands
 
 - Setup: Node 22.18+ (recommended 24 via `.nvmrc`), Git, `npm ci`.
@@ -28,7 +39,7 @@ prompts are reference material, not an instruction to resume porting loops.
 | Provider selection and HTTP | `src/meat/provider.ts`, `src/meat/openai.ts`, `src/meat/anthropic.ts` |
 | Read-only model tools | `src/meat/tools.ts` |
 | Byte handling, parsing | `src/meat/bytes.ts`, `src/meat/diff.ts` |
-| Behavior contracts | Matching file in `specs/`; TS additions in `specs/cli.md` |
+| Behavior contracts | [Current contract index](specs/INDEX.md), then the owning subject spec |
 | Frozen Go parity | `test/conformance.test.ts`, `conformance/vectors/` |
 
 ## Preserve these boundaries
@@ -57,3 +68,9 @@ verified decisions and reproducible gotchas in `docs/decisions.md`, with paths
 to evidence. Correct obsolete entries rather than accumulating contradictory
 rules. Keep session transcripts, speculation, and test-run logs out of startup
 instructions. Use `docs/agent-workflow.md` for review handoffs.
+
+A handoff records exact scope, evidence identity, inspected coverage, actual
+checks, unresolved questions and the next useful action. Revalidate it after
+source changes. Promote verified findings to the owning spec, regression case
+or decision with a revisit condition; keep proposals in the roadmap. Mark plan
+work complete only with implementation and validation evidence.

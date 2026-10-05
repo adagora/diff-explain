@@ -4,6 +4,10 @@ Turn a large code diff into a smaller **reading diff** focused on consequential
 changes. This is a local CLI, with no web server to start. TypeScript in `src/`
 is the active implementation; the Go tree is the migration reference.
 
+For the architecture, document authority and proposed improvements, start with
+[system design](docs/system-design.md) and the [current roadmap](docs/roadmap.md).
+The [agent workflow](docs/agent-workflow.md) describes commands available today.
+
 ## Start here
 
 Requires Git and Node **22.18+**; Node 24 is recommended (`nvm use` if you use
@@ -101,7 +105,8 @@ Replace `-look` with `-prompt` to export a packet, or remove it to abridge.
 `-staged` and `-w` cannot combine with each other or with a revision.
 `-prompt` cannot combine with `-look` or `-json`.
 Untracked files are not included by `git diff`. Empty input exits 1; it is not
-a successful review. Help exits 0; invalid flags exit 2.
+a successful review. Help exits 0; flag parsing errors exit 2. Source-selection
+conflicts and other runtime failures exit 1.
 
 From another repository, use an **absolute CLI path** and keep the shell in the
 repository being reviewed:
@@ -128,9 +133,17 @@ node --env-file=.env dist/cli/main.js HEAD
 
 Abridging sends the diff and potentially requested surrounding source to the
 selected provider. Large diffs are chunked; each chunk can require model calls.
+Engine limits apply per chunk; the CLI currently exposes no aggregate time,
+call or token budget. Results do not identify fallback or chunk validation
+coverage. Repository tools read the current checkout, even for historical or
+staged inputs; inspect the appropriate revision when that difference matters.
+
 Results are cached in `~/.meat`; `MEAT_CACHE=/some/path` relocates the cache and
 `MEAT_CACHE=` disables it. `-no-cache` skips reads but still updates the cache.
-Neither `-look` nor `-prompt` contacts providers or uses this cache.
+Neither `-look` nor `-prompt` contacts providers or uses this cache. Its key
+covers rubric/compiler protocol, model and diff text, but excludes surrounding
+source and provider routing. Use `-no-cache` to recompute when those have changed.
+Cached token totals describe the original computation.
 
 ## Is it worth using?
 
@@ -165,4 +178,5 @@ npm pack            # rebuilds before packaging; does not publish
 Tests use local mock HTTP servers and need no live API keys. A sandbox must
 allow loopback listeners for the full suite. See [AGENTS.md](AGENTS.md) for the
 module map and invariants, and [decisions](docs/decisions.md) for maintained
-knowledge. `TODO.md` and `migration/` retain historical porting context.
+knowledge. [The roadmap](docs/roadmap.md) owns proposed work.
+`TODO.md` and `migration/` retain historical porting context.

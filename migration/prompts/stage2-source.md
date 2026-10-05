@@ -1,5 +1,9 @@
 # Stage 2 loop — compress the implementation into specifications
 
+> Archived migration prompt. Run only when the current task explicitly asks
+> to revisit this historical stage. Present development starts with
+> [AGENTS](../../AGENTS.md) and the [current roadmap](../../docs/roadmap.md).
+
 Run this prompt repeatedly until the exit gate is met. One iteration does one
 batch and stops.
 

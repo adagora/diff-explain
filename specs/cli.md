@@ -27,6 +27,37 @@ Combining `-prompt` with `-look` or `-json` is a flag error (exit 2) before read
 input. Empty input retains exit 1. Model/cache flags have no effect in this mode.
 The packet prompt is separate from the rubric and does not change cache identity.
 
+## Current observability and limits
+
+These are source-observed limits, not additional protocol guarantees:
+
+- `readDiff` returns bytes and a source label. The packet has an input digest
+  but no resolved commit/context snapshot. Engine context tools use the current
+  checkout even for a historical, staged or stdin diff.
+- `-look` and `-prompt` both include the full input. Neither is a bounded,
+  structured inventory or a model execution forecast.
+- API JSON contains `smart_diff`, `summary`, `input_tokens`, `output_tokens`,
+  and optional `elision`. It has no provenance, completion/fallback status,
+  cache-hit field, chunk coverage or schema version.
+- The CLI exposes model selection and cache refresh, but no aggregate
+  deadline/call/token budget. Engine limits are per run/chunk. The CLI's API
+  AbortController is not connected to process cancellation.
+- Fresh-agent login probes have a timeout; the review child has no execution
+  deadline. Child output is forwarded, without a structured meat result.
+- Flag parsing errors exit 2. Source-selection conflicts, empty input and
+  runtime failures exit 1. Help exits 0 and writes usage to stderr.
+- API progress is interactive only; token/cache notices go to stderr.
+  Cached token totals describe the original computation.
+
+Evidence: [main.ts](../src/cli/main.ts) (`readDiff`, `run`, `main`),
+[render.ts](../src/cli/render.ts) (`renderJSON`),
+[agent.ts](../src/cli/agent.ts), [prompt.ts](../src/cli/prompt.ts).
+Existing assertions live in [CLI tests](../test/cli/).
+[Agent interface](agent-interface.md) proposes future remedies;
+[roadmap](../docs/roadmap.md) orders them.
+
+## Historical Go baseline
+
 > Status: stage 1 ✅ | stage 2 ✅
 > Go sources: `cmd/meat/main.go`, `cmd/meat/stdin.go`, `cmd/meat/isatty_*.go`
 > Go tests: `cmd/meat/readdiff_test.go` (7 tests — revision/range resolution,

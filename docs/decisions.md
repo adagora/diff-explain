@@ -1,56 +1,119 @@
 # Maintained decisions
 
-Keep entries short: decision, reason, evidence, and when to revisit. These are
-project facts, not a session journal. Last reviewed: 2026-09-07.
+Keep each entry scoped: decision, reason, evidence, and when to revisit.
+These are maintained project facts and rationale. Proposed runtime work belongs
+in the [roadmap](roadmap.md), with contracts labelled proposed.
+Last reviewed against local source and documentation: 2026-10-05.
+This date is not a claim that tests or live provider checks ran.
 
 ## TypeScript is the working implementation
 
-`package.json` builds `src/` into `dist/`; tests exercise TypeScript plus 111
-frozen Go conformance vectors. The Go tree and migration ledgers remain useful
-references. Consult them selectively rather than restarting historical loops.
-Evidence: `tsconfig.json`, `test/conformance.test.ts`, `migration/CONFORMANCE.md`.
+Decision: develop the CLI in `src/`; retain Go and frozen vectors as parity
+evidence. Historical migration loops do not select current work.
+
+Reason: `package.json` builds the TypeScript product; its tests and conformance
+harness exercise that implementation.
+
+Evidence: [package](../package.json), [tsconfig](../tsconfig.json),
+[conformance harness](../test/conformance.test.ts).
+Revisit if product ownership or compatibility policy changes.
 
 ## Use native TypeScript support consistently
 
-The minimum is Node 22.18; `.nvmrc` selects Node 24. Source launch and tests both
-execute `.ts` files directly. The previous Node 20 claim did not cover this
-workflow. Evidence: `package.json`, imports in `test/`, and
-[Node's TypeScript documentation](https://nodejs.org/api/typescript.html).
-Revisit if adding a separate test transpilation stage or changing runtimes.
+Decision: require Node 22.18+; recommend Node 24 via `.nvmrc`. Source launch and
+tests execute TypeScript directly with on-disk `.ts` import extensions; the
+build rewrites relative extensions for distribution.
 
-## Existing subscriptions use a portable review packet
+Reason: the original Node 20 migration target did not cover this workflow.
+Evidence: [package](../package.json), [tsconfig](../tsconfig.json),
+[Node selection](../.nvmrc), imports in [tests](../test/).
+Revisit when changing runtime or adding a transpilation stage.
 
-`-prompt` exports instructions, a source label, byte count, SHA-256, and the full
-diff without model or cache access. The existing agent session explains it.
-This remains useful for an existing session. Following the request for direct
-terminal execution, `-agent codex|claude` now launches a fresh CLI review.
-It checks subscription login and removes API overrides, with no API fallback.
-Grok remains packet-only until its login mode can be reliably verified.
-Evidence: `src/cli/prompt.ts`, `test/cli/prompt.test.ts`.
+## Existing sessions and fresh subscription reviews are separate workflows
 
-Native adapter evidence: `src/cli/agent.ts`, `test/cli/agent.test.ts`.
-Codex 0.153.4 completed a live HEAD review using its confirmed ChatGPT login on
-2026-09-07. Claude's adapter is mock-tested; a live subscription review has not
-been verified. `npm run review` launches Codex; `npm run packet` only exports.
+Decision: explanations default through the meat skill to `-prompt` in the
+current session. Explicit fresh reviews use `-agent codex|claude`, which checks
+subscription auth, removes API overrides and has no API fallback. Grok uses
+the packet workflow.
 
-## Visual explanations and compiled reading diffs have different guarantees
+Reason: exporting evidence and launching a new model session have different
+costs and context. API credentials being present do not change explanation
+intent.
 
-The engine validates model edit plans and compiles a reading diff. Packets and
-optional show-me explanations do not carry those compiler guarantees. Retain
-the original diff and label results accurately.
-Evidence: `src/meat/editplan.ts`, `src/meat/meat.ts`, `src/cli/prompt.ts`.
+Evidence: [packet](../src/cli/prompt.ts), [packet tests](../test/cli/prompt.test.ts),
+[adapter](../src/cli/agent.ts), [adapter tests](../test/cli/agent.test.ts),
+[canonical skill](../.claude/skills/meat/SKILL.md).
+Historical validation record: Codex 0.153.4 completed a ChatGPT-login review on
+2026-09-07. Claude's adapter was mock-tested; no live Claude review was recorded.
+Revisit on external CLI auth/capability changes; that dated record does not
+certify current external CLI compatibility.
 
-The HumanLayer show-me skill is now installed unchanged in
-`.claude/skills/show-me/`, linked into the Codex/Grok project roots. Integration
-logic stays in the meat skill, so upstream visual guidance can be updated
-independently. Default agent explanations use the current session even when
-API credentials exist; compiled abridging remains an explicit alternative.
-Source: https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me
-Installed: 2026-09-07 via the skill-installer (main branch snapshot).
+## Compiler guarantees and review conclusions have different evidence
 
-## Agent shell commands name their diff source
+Decision: identify raw views, packets, compiled reading diffs and agent
+explanations accurately. Retain a route to the original diff.
 
-Use explicit `HEAD` for the latest commit. No-argument execution inspects stdin;
-an agent process can receive an empty pipe instead of a terminal. Flags precede
-the revision because parsing stops at the first positional argument.
-Evidence: `src/cli/main.ts` (`parseFlags`, `readDiff`), `test/cli/main.test.ts`.
+Reason: edit-plan compilation validates source-derived elisions and specified
+structure. It does not prove semantic completeness or summary truth. Chunk
+concatenation does not add global move-symmetry checks; the rubric's assumptions
+about test success are not execution evidence.
+
+Evidence: [compiler](../src/meat/editplan.ts), [chunk mapping](../src/meat/chunk.ts)
+(`mapMovesToChunk`), [engine](../src/meat/meat.ts),
+[rubric](../src/meat/rubric.ts), [packet](../src/cli/prompt.ts).
+Revisit when validation or exposed provenance changes.
+
+## Diff identity does not establish context identity
+
+Decision: handoffs record diff identity and the source of surrounding evidence
+separately. Revalidate findings that depend on changed context.
+
+Reason: packets hash original diff bytes, while current engine read/search tools
+use the live checkout. The legacy cache key includes rubric, model and diff text,
+but excludes source context and provider routing. `-no-cache` refreshes reads
+and still writes; `MEAT_CACHE=""` disables both.
+
+Evidence: [packet](../src/cli/prompt.ts), [tools](../src/meat/tools.ts),
+[cache](../src/cli/cache.ts), [cache tests](../test/cli/cache.test.ts).
+Snapshot-bound context and evidence-aware reuse remain proposed in
+[agent interface](../specs/agent-interface.md). Revisit when they ship.
+
+## Visual integration stays in the meat skill
+
+Decision: the meat skill routes useful visual explanations to the installed
+HumanLayer show-me skill, allowing visual guidance to evolve independently of
+the CLI/compiler.
+
+Evidence: [meat skill](../.claude/skills/meat/SKILL.md),
+[show-me skill](../.claude/skills/show-me/SKILL.md).
+The installation was recorded on 2026-09-07 from the upstream main branch.
+Revisit when changing discovery or upstream integration; a visual explanation
+retains its underlying evidence limits.
+
+## Agent shell commands name their source
+
+Decision: use explicit `HEAD` for the latest commit and put flags before the
+revision.
+
+Reason: no-argument execution examines stdin, which may be an empty pipe in an
+agent shell. Flag parsing stops at the first positional argument.
+
+Evidence: [main](../src/cli/main.ts) (`parseFlags`, `readDiff`),
+[CLI tests](../test/cli/main.test.ts).
+Revisit if argument parsing or source selection changes.
+
+## Documentation has one route from intent to evidence to planned work
+
+Decision: [system design](system-design.md) owns relationships and the authority
+map; subject specs own current contracts; [roadmap](roadmap.md) owns future
+work; this file owns verified rationale. Startup instructions link to them.
+
+Reason: current agents should reach the relevant layer without ingesting the
+port ledger or confusing proposals with implemented interfaces. The target
+design connects request, evidence, execution plan, receipt and maintained
+knowledge; runtime adoption is explicitly pending.
+
+Evidence: [AGENTS](../AGENTS.md), [spec index](../specs/INDEX.md),
+[workflow](agent-workflow.md), status labels in
+[proposed contracts](../specs/agent-interface.md).
+Revisit when a new workflow needs a different owner or a proposal ships.
