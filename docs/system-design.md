@@ -1,10 +1,11 @@
 # System design: evidence an agent can navigate and control
 
-Status: design direction, 2026-10-05. The **current system** below is verified
+Status: design direction and P1 local observation adoption, 2026-10-07. The **current system** below is verified
 against source. The **target system** is proposed work tracked in the
 [roadmap](roadmap.md); its contracts live in
-[agent interface](../specs/agent-interface.md). Those proposals add no commands
-or guarantees to today's CLI.
+[agent interface](../specs/agent-interface.md). The implemented local surface
+is owned by [observe](../specs/observe.md); broader target contracts remain
+proposed and add no guarantees beyond current subject specs.
 
 ## The job of the system
 
@@ -34,7 +35,7 @@ where uncertainty could change the review.
 | What code owns this behavior? | [AGENTS](../AGENTS.md), [spec index](../specs/INDEX.md) | Navigation and invariants |
 | What is implemented and constrained? | [Subject specs](../specs/README.md), linked source and tests | Current contracts; Go sections identify the frozen baseline |
 | How should the whole system fit together? | This document | Design direction |
-| What will future agent-facing operations promise? | [Agent interface](../specs/agent-interface.md) | Proposed contract, explicitly unimplemented |
+| What will future agent-facing operations promise? | [Agent interface](../specs/agent-interface.md) | Target contracts; P1 adoption mapped to current observe spec, remainder proposed |
 | What should be built next and how will we know it works? | [Roadmap](roadmap.md) | Dependency order and acceptance gates |
 | Why does a maintained choice exist? | [Decisions](decisions.md) | Verified rationale, evidence, revisit condition |
 | How was the port performed? | [Migration](../migration/README.md), [old ledger](../TODO.md) | Historical evidence |
@@ -53,6 +54,9 @@ instructions small enough that this routing remains useful.
 ```mermaid
 flowchart TD
     S["Git selection or stdin bytes"] --> C["CLI source collection"]
+    S --> B["Opt-in snapshot: exact bytes and resolved source"]
+    B --> I["Bounded inventory, evidence and API partition forecast"]
+    A["-capabilities: local contract, no source probe"]
     C --> L["-look: shape and full diff"]
     C --> P["-prompt: full review packet"]
     P --> O["Existing agent session: explanation"]
@@ -68,8 +72,14 @@ flowchart TD
     D --> R
 ```
 
-All paths share diff collection in [main.ts](../src/cli/main.ts). They produce
-different artifacts. [prompt.ts](../src/cli/prompt.ts) preserves the full input
+The CLI in [main.ts](../src/cli/main.ts) selects separate collection paths.
+Legacy operations use `readDiff`; opt-in observation uses
+[snapshot.ts](../src/cli/snapshot.ts) and [observe.ts](../src/cli/observe.ts).
+Committed observation emits a controlled tree diff and immutable tree
+identities, while legacy commit envelopes remain unchanged. Mutable/stdin
+snapshots retain diff evidence with unavailable context. No observation
+operation dispatches a model or reads the cache. They produce different
+artifacts. [prompt.ts](../src/cli/prompt.ts) preserves the full input
 and hashes its bytes. [agent.ts](../src/cli/agent.ts) runs a fresh subscription
 review. [meat.ts](../src/meat/meat.ts) asks an API model for edit plans and
 compiles them locally. The default CLI path is API abridging; the meat skill
@@ -86,9 +96,9 @@ The main gaps are connections between these paths:
 
 | Current observation | Consequence | Proposed owner |
 |---|---|---|
-| Source is diff bytes plus a label; packet adds byte hash | HEAD can move; a hash alone does not identify surrounding source | Evidence snapshot |
+| Legacy source is diff bytes plus a label; P1 snapshots resolve committed objects once | Snapshot identity binds committed trees, but legacy packets do not | P1 delivered; execution binding in P2 |
 | Engine tools read the live checkout | Historical or staged changes can be interpreted using different source | Context policy |
-| Look and packet both print the full diff | Neither provides a bounded entry point for a large review | Inventory and evidence selection |
+| Look and packet print the full diff; P1 inventory/evidence provides bounded pages | Existing packet workflows still require full input; selected evidence carries parent limits | P1 delivered; packet adoption in P6 |
 | Result exposes diff, summary, token totals | Fallback, chunk handling, validation coverage, and usage uncertainty are hidden | Run receipt |
 | Limits restart for each engine chunk | Per-run bounds do not express a whole-review budget | Execution controller |
 | Cache key contains rubric, model, diff | Changed context or provider routing is outside cache identity | Evidence-aware reuse |
@@ -102,7 +112,9 @@ subject specs.
 
 ## Target system: a linked sequence of artifacts
 
-The following layers are proposed. Each adds meaning while retaining references
+The following layers define the target. P1 implements diff snapshots,
+inventory/evidence and a local partition forecast; bound context, execution
+receipts and enforceable budgets remain proposed. Each adds meaning while retaining references
 to the evidence beneath it. Implement them as small values and functions around
 the existing CLI and engine; introduce a separate module when ownership or
 multiple consumers justify it.
@@ -249,3 +261,10 @@ interrupted execution. Measure:
 Treat compression ratio as descriptive. It cannot substitute for retaining
 consequential facts. Establish the baseline before claiming savings; keep live
 model evaluations explicit, separately costed, and outside ordinary checks.
+
+P1 supplies a reproducible synthetic byte baseline through
+[observe-baseline.ts](../scripts/observe-baseline.ts) and
+`npm run observe:baseline`. It compares full-packet size with bounded initial
+orientation and verifies exact evidence reconstruction; time, semantic quality
+and live model costs are not measured. See the [P7 baseline](roadmap.md#p7-evaluate-usefulness-and-promote-verified-lessons)
+for counts and limits. The broader evaluation remains proposed.

@@ -72,6 +72,8 @@ test("prompt reviews another repo's explicit commit, range, index and worktree",
   const env = {
     ...process.env, GIT_AUTHOR_NAME: "test", GIT_AUTHOR_EMAIL: "test@example.com",
     GIT_COMMITTER_NAME: "test", GIT_COMMITTER_EMAIL: "test@example.com",
+    // This LF fixture must not inherit the user's line-ending conversion policy.
+    GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "core.autocrlf", GIT_CONFIG_VALUE_0: "false",
   };
   const git = (...args: string[]) => execFileSync("git", args, { cwd, env, encoding: "utf8" });
   git("init", "-q");

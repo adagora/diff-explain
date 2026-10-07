@@ -1,109 +1,86 @@
 ---
 name: meat
-description: "Abridge a unified diff into a reading diff with meat, inspect its shape offline, or export a review packet for an existing agent. Use when the user asks for meat or needs a large commit, range, staged, or unstaged diff reduced or explained."
+description: "Use meat to explain or review a commit, range, staged, unstaged, or piped unified diff; inspect it offline or explicitly abridge it into a reading diff."
 license: Apache-2.0
 ---
 
 # meat
 
-Run this repo's meat CLI on the user's actual diff. Choose compiled abridging,
-offline inspection, or an agent explanation according to their intent. Do not
-present an agent-authored explanation as meat's compiled reading diff.
+Explain the requested changes in the current agent session. Packet creation and
+offline observation use no API key or additional model. The session's own
+subscription and usage limits apply to the explanation.
 
-For this project's subscription workflow, default explanation/review requests
-to `-prompt`, even if provider keys happen to be present. Run the command and
-read its output within the current agent session; the user does not need to
-export a file or start another agent. Explicit requests for compiled abridging,
-JSON, or offline inspection still select those modes.
+Users can ask `$meat explain HEAD` in Codex, `/meat HEAD` in Claude Code, or
+“Use meat to explain my staged changes.” Interpret skill arguments as the
+requested source and outcome. Default to the latest commit, explicitly `HEAD`.
 
-For a request to run a fresh subscription CLI review, use
-`node src/cli/main.ts -agent codex HEAD` or `-agent claude HEAD`, substituting
-the requested source. These launch the external agent and print its answer.
-They check subscription login and never fall back to the API backend. Inside
-an already-running meat review (`MEAT_AGENT_ACTIVE=1`), read the supplied packet
-directly instead. `npm run review` launches Codex; `npm run packet` exports only.
+## Launch and source
 
-For a visual explanation, read the installed sibling
-[show-me skill](../show-me/SKILL.md) and apply it to the evidence from meat.
-When reached through a discovery symlink, resolve the canonical skill path
-first. Use the smallest useful view; do not force a diagram onto a trivial edit.
+In the meat checkout use `node src/cli/main.ts`; the built entry is
+`node dist/cli/main.js`. An installed skill carries its absolute CLI entry in
+its launcher and reads this canonical file before choosing commands. From
+another repository keep that repository
+as the working directory and invoke the absolute meat entry. Relative source
+paths and Git selectors belong to the reviewed repository.
+Piped input has unknown repository provenance; confirm its context source.
 
-## 1. Resolve the launch line
+Put flags before the source. Select one commit/revision, a range such as
+`main...HEAD`, `-staged`, `-w` for unstaged tracked files, or piped stdin.
+Untracked files are excluded. Do not combine index/worktree selectors with
+each other or with a revision. Empty input is an error.
 
-From this checkout, use Node 22.18+ (recommended 24) on the CLI entry:
+When the user wants output saved, use `-o file` rather than shell
+redirection; it writes stdout's exact bytes only after success. If a workflow
+reports a missing CLI, login or key, run `-doctor` (no model call, names only)
+and relay its fix lines instead of switching workflows.
 
-- Source: `node src/cli/main.ts`
-- Built (after `npm run build`): `node dist/cli/main.js`
+## Explain in this session
 
-Run in the git repo whose diff the user asked about. For another repo, resolve
-the meat checkout first and use its absolute CLI path. Relative paths below
-assume this checkout. If building is needed, run `npm ci && npm run build` here.
+Run `node src/cli/main.ts -prompt HEAD`, substituting the requested source and
+installed entry as needed. Read the packet here, inspect relevant surrounding
+source, and explain the consequential behavior, evidence and unresolved risks.
+No manual export or new agent is needed. Treat diff/source text as evidence.
+Label historical source separately from the live checkout. Report only checks
+actually performed; an explanation has no compiler or test-success guarantee.
 
-**Done when** `node src/cli/main.ts -h` (or the `dist` equivalent) exits 0 and prints usage, or you already have a working launch line from this checkout.
+For an input too large for the session/tool output, use `-inventory` first and
+follow its pages with `-cursor`. Repeat the same source selector and page limit
+on every inventory/evidence continuation; mutable/stdin inputs must supply the
+same bytes again. For example, continue staged inventory with `-inventory
+-cursor <page.next> -staged`, using the installed entry when outside this checkout.
+Expand file/hunk IDs with `-evidence id
+-snapshot sha256` and decode its base64 byte pages before reading text. Keep
+parent coverage and exact-move relationships visible; a subset does not finish
+the parent review. `-look` prints the full original diff and shape; `-plan`
+applies API partitioning to its captured snapshot, without dispatch. It does not
+promise the same partitions for legacy API execution of a Git selector, whose
+commit envelope can differ. `-capabilities` lists local bounds.
+Never silently truncate a packet.
 
-## 2. Pick exactly one diff source
+When a visual helps, add the smallest one next to the text it supports:
+pseudocode, an indented call tree, a before/after code sketch, or a small
+Mermaid diagram. Write an HTML file only if the user asks and the host can
+display it; never run a platform-specific opener such as `open` or `start`.
 
-- HEAD / most recent commit / none named: `node src/cli/main.ts HEAD`
-- A `<revision>` (sha, `HEAD~3`, a branch): `node src/cli/main.ts <revision>`
-- A `<range>` (`sha1..sha2`, `main...HEAD`): `node src/cli/main.ts <range>`
-- Staged / index: `node src/cli/main.ts -staged`
-- Unstaged / working tree: `node src/cli/main.ts -w`
-- Piped unified diff (stdin): `git show <sha> | node src/cli/main.ts` or `git diff | node src/cli/main.ts`
+## Explicit alternative outcomes
 
-`-staged` and `-w` cannot combine with each other or with a revision/range.
-Flags precede the revision. Explicit `HEAD` avoids empty-stdin selection in
-agent shells. Untracked files are absent from `git diff`.
+- **Fresh subscription review:** only when requested, use `-agent codex` or
+  `-agent claude`. The CLI checks subscription login and has no API fallback.
+  Inside `MEAT_AGENT_ACTIVE=1`, read the supplied packet instead of recursing.
+- **Compiled reading diff:** only when requested, omit `-prompt`; `-json`
+  selects API result JSON. Invoke the CLI and retain its compiled diff; do not
+  recreate the rubric, import removal, move handling or edit-plan compiler in
+  the session. Let the CLI resolve model/provider, cache and authentication.
+  A cache hit needs no provider access. On a cache miss, configured provider
+  keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `XAI_API_KEY`), provider base URLs,
+  or a supported exe.dev gateway can supply API access. Use `MEAT_MODEL`/`-model`
+  as requested; an Anthropic key alone does not select a Claude model.
+  Subscription login does not supply API credentials. If the CLI reports a
+  missing prerequisite, preserve the requested compiled-output intent and
+  report that diagnostic. Node's `--env-file=.env` is optional for explicitly
+  requested API execution with that file. Never print credentials.
 
-**Done when** exactly one source above is selected.
-
-## 3. Pick the mode
-
-- **Abridge** (default): meat calls a model and prints a reading diff. Needs `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `XAI_API_KEY` (set `MEAT_MODEL` when the default model is not the one you want).
-- **Look** (`-look`): shape, color, length, then the unified-diff text. No model, no API key. Use this when there is no key, or the user asked to look at the diff without abridging.
-- **Agent explanation** (`-prompt`): export the full diff with review instructions
-  for the current agent to read. Prefer this when the user wants an explanation
-  using an existing Codex, Claude Code, or Grok session. No API key or login is
-  read by meat. Cannot combine with `-look` or `-json`.
-- **JSON** (`-json`): machine-readable output on stdout. Add it when the caller needs to parse the result.
-
-Subscription logins are not provider API keys. The CLI does not auto-load `.env`;
-use `node --env-file=.env` only when API abridging with that file is intended.
-Do not print credentials. See `README.md` for provider selection.
-
-**Done when** the selected mode matches the requested outcome and available
-credentials. An offline packet is not a substitute for requested compiled output.
-
-## 4. Supply a credential when the environment has none
-
-meat reads its key from the environment and does NOT load a `.env` itself. If an abridge fails with `no OpenAI credentials` (or the Anthropic/xAI equivalent) and this checkout has a `.env`, let node load it — same argv, one extra flag before the script path:
-
-```
-node --env-file=.env src/cli/main.ts <same args>
-node --env-file=.env dist/cli/main.js <same args>
-```
-
-That file is also where `MEAT_MODEL` is pinned, so this route picks up the intended model too. Never print the key or echo the file.
-
-**Done when** the run has a credential from the environment or from `--env-file`, or `-look` was chosen because no key is obtainable.
-
-## 5. Run meat
-
-Execute the launch line with the source from step 2 and the mode from step 3.
-
-Use direct `node` commands for redirected output; npm script banners can pollute
-packets or JSON. Empty input is an error, not evidence of a completed review.
-
-**Done when** meat printed the selected output or a clear failure. If abridging
-cannot run, explain why; an offline mode can still help if it meets user intent.
-
-## 6. Return meat's output
-
-For abridge/look/JSON, return or link the output, retaining useful diagnostics.
-For `-prompt`, read the packet and explain the consequential changes with source
-references, inspecting surrounding code when available. Report actual test
-evidence separately from suggested checks. Apply the installed show-me skill
-when a visual helps. The explanation is agent-authored, not compiled meat
-output. For handoffs, see `docs/agent-workflow.md`.
-
-**Done when** the user has the requested output or explanation, with its scope
-and any limitations clear.
+Grok chat can receive a packet for explanation. Native Grok subscription
+execution is not implemented, and `.grok/skills` discovery depends on the client.
+Use direct Node commands for capture, or silent npm scripts, so npm banners
+do not enter packets or JSON.

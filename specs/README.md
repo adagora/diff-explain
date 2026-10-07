@@ -9,8 +9,9 @@ between modules and the [roadmap](../docs/roadmap.md) for proposed work.
 Most subject documents originated during the Go-to-TypeScript migration.
 Their Go citations and stage checkmarks describe the frozen baseline. Current
 TypeScript additions and source-observed limits are labelled separately.
-[Agent interface](agent-interface.md) is a proposed contract with no runtime
-implementation; its names are not available commands or fields.
+[Agent interface](agent-interface.md) maps P1's partial runtime adoption to
+[observe](observe.md), which owns implemented flags and fields. The broader
+interface remains proposed; its logical names are not CLI spellings.
 
 For each non-obvious current claim, identify the active source path and symbol.
 Link a test when one constrains the claim. Distinguish an executable guarantee

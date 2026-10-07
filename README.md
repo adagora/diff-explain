@@ -12,39 +12,87 @@ The [agent workflow](docs/agent-workflow.md) describes commands available today.
 
 Requires Git and Node **22.18+**; Node 24 is recommended (`nvm use` if you use
 nvm). The source CLI and tests use Node's built-in TypeScript support.
-Go is not needed for normal use.
+Go is not needed for normal use. Meat runs on Linux, macOS and Windows; the
+test suite is checked on Linux and Windows. Set up once from this checkout:
 
 ```sh
 npm ci
-npm run build
-node dist/cli/main.js -look HEAD
+npm run setup
 ```
 
-The last command runs locally without an API key. It prints line counts,
-add/delete/context shape, and the original diff. `npm run demo` does the same
-from source. `npm start -- -h` lists all flags.
+`setup` builds the CLI, links a `meat` command onto your PATH (`npm link`),
+installs the meat skill for Codex and Claude Code, and finishes with
+`meat -doctor`. The doctor lists which review workflows work on this machine
+and how to fix the others. It asks installed agent CLIs for their login status
+but makes no model call, reads no diff and prints environment variable names,
+never values. Run it again after signing in or adding a key. To remove the
+command, run `npm unlink -g meat`.
 
-## Pick the workflow
+On Linux, `npm link` fails with `EACCES` when Node was installed system-wide.
+Use a version manager such as nvm, or give npm a user prefix with
+`npm config set prefix ~/.local` (with `~/.local/bin` on your PATH), then rerun
+`npm run setup`. On Windows, npm creates `meat.cmd` and `meat.ps1`; PowerShell
+runs the latter under the default `RemoteSigned` policy.
 
-### Run the subscription CLI directly
+Without the link, use `node /path/to/meat/dist/cli/main.js` wherever this page
+says `meat`, or `npm start --` inside this checkout. `meat -h` lists all flags.
 
-Install Codex CLI and sign in with `codex login` using ChatGPT, then:
+## Review a change
+
+Run meat from the repository you want reviewed. Pick the row that matches what
+you already have:
+
+| You have | Run | You get |
+|---|---|---|
+| Claude Code or Codex open | `/meat HEAD` in Claude Code, `$meat explain HEAD` in Codex | The open session explains the change |
+| A Codex or Claude subscription | `meat -agent codex HEAD` or `meat -agent claude HEAD` | A fresh read-only review in your terminal |
+| Another agent or chat, such as Grok | `meat -prompt -o review.md HEAD` | A review packet to attach or paste |
+| Nothing set up yet | `meat -look HEAD` | The change's shape, size and full diff, offline |
+| An API key | `meat HEAD` | A compiled, abridged reading diff ([API abridging](#api-abridging-optional)) |
+
+Only the last row needs an API key. Run without one, meat says so and lists the
+commands that need none for the same change.
+
+### Use an already open agent session
+
+In Claude Code type **`/meat HEAD`**; in Codex type **`$meat explain HEAD`**. You
+can also ask “Use meat to explain my staged changes.” The skill collects a
+packet and explains it in your current session, using that session's
+subscription allowance. Packet creation needs no API key and launches no
+additional agent. When a visual helps, the skill adds a small call tree, code
+sketch or diagram.
+
+`npm run setup` installs the skill. To install only the skill, run
+`npm run skill:install -- all`, or `codex` or `claude` instead of `all`. The
+installer writes a personal skill to `~/.agents/skills/meat/` and/or
+`~/.claude/skills/meat/`, binding it to this checkout's absolute source entry.
+The personal launcher reads the canonical skill on each use, so instruction
+updates apply without reinstalling. Keep the checkout and its dependencies
+available; rerun after moving it or changing discovery metadata. Open a new CLI
+session, then invoke meat from the repository you want reviewed. This installer
+runs from the source checkout, not an npm package installation.
+The installer refuses linked personal meat directories/files to avoid altering
+their targets. Use a regular personal skill directory.
+
+A plugin can distribute a skill with other components. This repository ships
+the standalone skill and installer; it does not yet ship a plugin package.
+
+### Run a fresh subscription review
+
+Sign in once with `codex login` (using ChatGPT) or `claude auth login`, then:
 
 ```sh
-npm run review -- HEAD
-# Equivalent built command:
-node dist/cli/main.js -agent codex HEAD
+meat -agent codex HEAD
+meat -agent claude main...HEAD
 ```
 
-This launches a fresh Codex review and prints the finished explanation in your
-terminal. The installed show-me instructions are included automatically.
-Use `-staged`, `-w`, or a revision range instead of `HEAD` for another scope.
-For Claude Code, sign in using `claude auth login`, then run:
-
-```sh
-npm run review:claude -- HEAD
-# node dist/cli/main.js -agent claude HEAD
-```
+Inside this checkout, `npm run review -- HEAD` and `npm run review:claude -- HEAD`
+do the same. This launches a fresh review and prints the finished explanation in
+your terminal, with a small call tree, code sketch or diagram where one helps.
+While it runs, meat shows the elapsed time and hides the agent's own log, which
+includes its session header and the echoed packet. Add `-verbose` to stream
+that log; if the review fails, meat prints the end of it. `-o review.md` saves
+the explanation instead of printing it.
 
 Meat checks the CLI's subscription login before sending the diff. It removes
 API credentials and provider-routing variables from the child environment and
@@ -56,64 +104,89 @@ The result is an agent-written explanation, not an engine-compiled reading diff.
 
 Requires CLI versions supporting the flags in `src/cli/agent.ts` (Codex 0.153.4
 was live-tested). Update older CLIs if they report an unsupported option. Grok
-native subscription execution is not implemented; use its packet workflow below.
+native subscription execution is not implemented; use the packet instead.
 Plain `meat HEAD` still selects the original API abridger: use **`-agent codex`**
-or **`npm run review`** for subscription execution.
+for subscription execution.
 
-### Use an already open agent session
+### Give the packet to another agent
 
-**Subscription workflow is ready in this checkout.** In your current agent,
-ask: **“Use meat and show-me to explain HEAD using my current session.”**
-The meat skill runs `-prompt`, reads the result, and uses the installed show-me
-skill for a useful visual. It does not require an API key or a separate service.
-Codex can discover the new skill on your next turn; reopen a Claude Code session
-if its skill list has not refreshed. This installation is project-local.
+`-prompt` exports the full diff with review instructions:
 
-For a manual packet, run `npm run --silent packet -- HEAD > /tmp/meat-review.md`.
+```sh
+meat -prompt -o review.md HEAD
+```
 
-| Your goal | Command | Model access |
-|---|---|---|
-| Inspect the original diff and its shape | `npm start -- -look HEAD` | None |
-| Explain changes with your existing agent | `node dist/cli/main.js -prompt HEAD > /tmp/meat-review.md` | Your agent's existing session |
-| Produce a compiled, abridged reading diff | `npm start -- HEAD` | Provider API credentials or supported exe.dev gateway |
-| Get the abridged result as JSON | `node dist/cli/main.js -json HEAD` | Same as abridging |
+Then ask the agent: **“Read `review.md`, inspect relevant source, and explain
+the important changes and review risks.”** For Grok chat, attach or paste the
+file. `-prompt` does not call an agent, use a login, or incur a model call
+itself. It exports the full diff with review instructions, not an abridgment.
+The resulting explanation is agent-authored and does not use meat's edit-plan
+compiler. A relative `-o` path lands in the current directory, which is usually
+the reviewed repository; write it elsewhere if you don't want it there.
 
-For the subscription workflow, ask Codex or Claude Code: **“Read
-`/tmp/meat-review.md`, inspect relevant source, and explain the important changes
-and review risks.”** For Grok chat, attach or paste the packet. `-prompt` does
-not call an agent, use a login, or incur a model call itself. It exports the full
-diff with review instructions, not an abridgment. The resulting explanation is
-agent-authored and does not use meat's edit-plan compiler.
-
-Use direct `node` commands when redirecting or piping: npm adds script banners
-unless invoked with `--silent`.
+Prefer `-o` to shell redirection. Windows PowerShell 5.1's `>` adds a byte-order
+mark and converts line endings, and `npm run` prints banners unless invoked
+with `--silent`. `-o` writes exactly the bytes stdout would carry, only after
+the command succeeds. It works with every output: `-look`, `-json`, the
+abridged diff, observation JSON and `-agent`.
 
 ## Choose the diff
 
-Flags go **before** the revision. Use explicit `HEAD` in agent shells and CI;
-with no source argument, redirected stdin may be selected instead.
+Flags go **before** the revision. If one comes after, meat stops and shows the
+corrected command. Use explicit `HEAD` in agent shells and CI; with no source
+argument, redirected stdin may be selected instead.
 
 ```sh
-node dist/cli/main.js -look HEAD           # latest commit
-node dist/cli/main.js -look main...HEAD    # branch changes since merge base
-node dist/cli/main.js -look -staged        # index
-node dist/cli/main.js -look -w             # unstaged tracked files
-git diff | node dist/cli/main.js -prompt  # stdin
+meat -look HEAD           # latest commit
+meat -look main...HEAD    # branch changes since merge base
+meat -look -staged        # index
+meat -look -w             # unstaged tracked files
+git diff | meat -prompt   # stdin
 ```
 
 Replace `-look` with `-prompt` to export a packet, or remove it to abridge.
 `-staged` and `-w` cannot combine with each other or with a revision.
 `-prompt` cannot combine with `-look` or `-json`.
+
+For bounded offline inspection, use the versioned observation commands:
+
+```sh
+meat -inventory -page-size 20 HEAD
+meat -evidence h:123 -snapshot <snapshot-sha256> -max-bytes 8192 HEAD
+meat -plan HEAD
+meat -capabilities
+```
+
+Choose an actual entry ID and snapshot SHA-256 from the inventory before
+expanding evidence. `-cursor <page.next>` continues the same source, operation
+and page limit; changed evidence is rejected. Inventory and plan optionally
+accept `-snapshot` too. Flags precede the revision. Inventory/plan pages default
+to 20 entries (maximum 100); evidence pages default to 8192 bytes (maximum
+16384). Each success writes one `meat.observe` version 1 JSON document. Evidence
+uses base64 to preserve exact raw bytes, with original diff ranges whose ends
+are exclusive. Runtime diagnostics go to stderr and exit 1; flag errors exit 2.
+
+These commands make no model, login, gateway or cache call. Capabilities probes
+no source. Committed snapshots resolve objects once and identify before/after
+trees; their controlled diff omits commit messages. Mutable inputs retain diff
+bytes with unavailable context and unverified consistency; stdin provenance
+stays unknown. Snapshot-bound context tools remain future work. Planning applies
+API partitioning to the captured observation bytes, with unknown model calls,
+tokens and cost. It does not promise the same partitions for legacy execution of
+the same Git selector, whose commit envelope can differ; current
+execution tools still read the live checkout. Observation flags cannot combine
+with legacy output, agent, model or cache flags. See the
+[observation contract](specs/observe.md) for source identity and pagination.
 Untracked files are not included by `git diff`. Empty input exits 1; it is not
 a successful review. Help exits 0; flag parsing errors exit 2. Source-selection
 conflicts and other runtime failures exit 1.
 
-From another repository, use an **absolute CLI path** and keep the shell in the
-repository being reviewed:
+From another repository without `npm run setup`, use an **absolute CLI path** and
+keep the shell in the repository being reviewed:
 
 ```sh
 cd /path/to/your-repo
-node /path/to/meat/dist/cli/main.js -prompt main...HEAD > /tmp/meat-review.md
+node /path/to/meat/dist/cli/main.js -prompt -o review.md main...HEAD
 ```
 
 ## API abridging (optional)
@@ -153,19 +226,19 @@ but abridging remains selective: keep the original diff available for review.
 For occasional explanations, your existing agent plus `-prompt` is a simpler
 starting point. Try a few real changes before adding API automation.
 
-HumanLayer's [show-me skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md)
-is complementary: it guides an agent to explain concepts visually using compact
-diagrams, code sketches, or HTML. It does not implement meat's compiler or Git
-hosting integration. Use it for understanding architecture; use meat's abridger
-to reduce diffs. It can visualize a packet or a meat result without adding a
-runtime dependency here. It is installed locally under `.claude/skills/show-me/`,
-with discovery links for Codex and Grok.
+Visual explanations are built in. The meat skill and `-agent` reviews add the
+smallest useful pseudocode, call tree, before/after sketch or Mermaid diagram,
+using no platform-specific commands, so they behave the same on Linux, macOS
+and Windows. A separate visual skill, such as HumanLayer's
+[show-me](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md),
+can be installed from its upstream source; meat neither bundles nor requires it.
 
 See [the agent workflow](docs/agent-workflow.md) for GitHub/GitLab use and durable
 project knowledge. Codex discovers `AGENTS.md`; Claude Code loads it through
-`CLAUDE.md`. The shared meat skill lives in `.claude/skills/meat/`, with links
-from `.agents/skills/` and `.grok/skills/`. Grok skill discovery depends on your
-client; plain chat can use the exported packet.
+`CLAUDE.md`. The canonical meat skill lives in `.claude/skills/meat/`; synchronize
+the tracked `.agents/skills/` and `.grok/skills/` copies with `npm run skill:sync`
+after editing it. Grok skill discovery depends on your client; plain chat can
+use the exported packet. The installer supports Codex and Claude Code.
 
 ## Development
 
@@ -179,4 +252,6 @@ Tests use local mock HTTP servers and need no live API keys. A sandbox must
 allow loopback listeners for the full suite. See [AGENTS.md](AGENTS.md) for the
 module map and invariants, and [decisions](docs/decisions.md) for maintained
 knowledge. [The roadmap](docs/roadmap.md) owns proposed work.
+Git attributes preserve the raw bytes of conformance fixtures and corpus diffs
+across checkouts, including Windows with `core.autocrlf=true`.
 `TODO.md` and `migration/` retain historical porting context.

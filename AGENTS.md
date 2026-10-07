@@ -10,8 +10,9 @@ prompts are reference material, not an instruction to resume porting loops.
   authority map; [roadmap](docs/roadmap.md) owns proposed work and acceptance gates.
 - [Spec index](specs/INDEX.md) routes current contracts to source and tests.
   Read the relevant slice, then follow evidence links as needed.
-- [Agent interface](specs/agent-interface.md) is explicitly proposed. Do not
-  use its logical names as existing flags, tools, types, or output guarantees.
+- [Agent interface](specs/agent-interface.md) maps P1 adoption and labels the
+  remaining targets proposed. [Observe](specs/observe.md) owns shipped flags
+  and schema; do not treat unmapped logical names as existing operations.
 - Match the requested outcome and diff source before choosing a workflow.
   See [agent workflow](docs/agent-workflow.md) for evidence and handoff rules.
 
@@ -32,7 +33,9 @@ prompts are reference material, not an instruction to resume porting loops.
 |---|---|
 | Flags, Git sources, orchestration | `src/cli/main.ts`, `test/cli/main.test.ts` |
 | Offline views and agent packet | `src/cli/shape.ts`, `src/cli/prompt.ts` |
+| Snapshot identity, bounded inventory and offline plan | `src/cli/snapshot.ts`, `src/cli/observe.ts` |
 | Subscription CLI execution and login gates | `src/cli/agent.ts`, `test/cli/agent.test.ts` |
+| Setup readiness, `-o`, help and recovery hints | `src/cli/doctor.ts`, `src/cli/main.ts`, `test/cli/usability.test.ts` |
 | Terminal/JSON rendering, cache | `src/cli/render.ts`, `src/cli/cache.ts` |
 | Model loop and chunks | `src/meat/meat.ts`, `src/meat/chunk.ts` |
 | Plan validation and compilation | `src/meat/plan.ts`, `src/meat/editplan.ts` |
@@ -56,10 +59,14 @@ prompts are reference material, not an instruction to resume porting loops.
 - Keep stdout parseable for `-json` and `-prompt`; diagnostics go to stderr.
 - Go under `meat/` and `cmd/` is the migration reference. Change it only when
   the task concerns Go or parity. TypeScript-only features are valid.
-- `.claude/skills/meat/SKILL.md` is canonical; Codex/Grok copies are symlinks.
-- HumanLayer show-me is installed at `.claude/skills/show-me/SKILL.md` with the
-  same discovery links. The meat skill defaults explanations to `-prompt` in
-  the current agent session and routes useful visuals to show-me.
+- `.claude/skills/meat/SKILL.md` is canonical; synchronize the tracked
+  Codex/Grok discovery copies with `npm run skill:sync` after editing it.
+- The meat skill defaults explanations to `-prompt` in the current agent
+  session. Visual guidance is built into the skill and the `-agent` prompt
+  (`visualGuidance` in `src/cli/agent.ts`); keep it plain text or Mermaid, with
+  no platform-specific commands, so it works on Linux, macOS and Windows.
+- Discovery copies use regular Git file mode `100644`; preserve that type when
+  changing skills. See decisions for conversion from former Windows link stubs.
 
 ## Leave useful knowledge
 

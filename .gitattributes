@@ -1,0 +1,6 @@
+# Byte offsets, hashes, EOLs and compiler oracles use the committed raw bytes.
+# Preserve intentional LF/CRLF data even in core.autocrlf=true checkouts.
+/conformance/vectors/** -text
+/testdata/python/*.diff -text
+/analysis/**/*.original.diff -text
+/analysis/**/*.live.diff -text

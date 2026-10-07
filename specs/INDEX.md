@@ -7,6 +7,9 @@ record Go spec extraction and do not measure today's implementation or checks.
 | Concern | Contract | Active source | Evidence |
 |---|---|---|---|
 | Sources, flags, offline modes, native agent launch | [cli](cli.md) | [CLI](../src/cli/main.ts), [packet](../src/cli/prompt.ts), [agent](../src/cli/agent.ts) | [CLI tests](../test/cli/) |
+| Current-session CLI skill and personal installation | [workflow](../docs/agent-workflow.md), [cli](cli.md) | [canonical skill](../.claude/skills/meat/SKILL.md), [installer](../scripts/install-meat-skill.ts) | [skill tests](../test/skill.test.ts), [installation tests](../test/skill-install.test.ts) |
+| First-run setup, `-doctor`, `-o`, recovery hints, quiet `-agent` | [cli](cli.md#first-run-usability) | [CLI](../src/cli/main.ts), [doctor](../src/cli/doctor.ts), [agent](../src/cli/agent.ts) | [usability tests](../test/cli/usability.test.ts), [agent tests](../test/cli/agent.test.ts) |
+| Snapshot identity, bounded inventory/evidence, local forecast/capabilities | [observe](observe.md) | [snapshot](../src/cli/snapshot.ts), [observe](../src/cli/observe.ts) | [snapshot tests](../test/cli/snapshot.test.ts), [observation tests](../test/cli/observe.test.ts) |
 | Byte parsing and layout | [diff](diff.md) | [bytes](../src/meat/bytes.ts), [diff](../src/meat/diff.ts) | [byte tests](../test/meat/bytes.test.ts), [diff tests](../test/meat/diff.test.ts) |
 | Edit-plan compilation and structure | [editplan](editplan.md), [imports](imports.md), [moves](moves.md), [python](python.md) | [compiler](../src/meat/editplan.ts), [plan types](../src/meat/plan.ts) | [engine tests](../test/meat/), [conformance](../test/conformance.test.ts) |
 | Chunking and cross-chunk limits | [chunk](chunk.md) | [chunk](../src/meat/chunk.ts) | [chunk tests](../test/meat/chunk.test.ts) |
@@ -16,7 +19,7 @@ record Go spec extraction and do not measure today's implementation or checks.
 | Prompt/compiler identity | [rubric](rubric.md) | [rubric](../src/meat/rubric.ts) | [rubric tests](../test/meat/rubric.test.ts), [conformance](../test/conformance.test.ts) |
 | Cache and output | [cache](cache.md), [render](render.md), [elision](elision.md) | [cache](../src/cli/cache.ts), [render](../src/cli/render.ts) | [CLI tests](../test/cli/) |
 | Vocabulary, limits, fixtures | [glossary](glossary.md), [constants](constants.md), [test infrastructure](test-infrastructure.md) | Follow subject owners above | Baseline and current evidence are labelled in each subject |
-| Proposed agent operations | [agent interface](agent-interface.md) | Unimplemented | [Roadmap gates](../docs/roadmap.md) |
+| Broader agent contracts and adoption | [agent interface](agent-interface.md) | P1 local surface in [observe](observe.md); P2–P7 proposed | [Roadmap gates](../docs/roadmap.md) |
 
 System relationships and documentation authority are maintained in
 [system design](../docs/system-design.md).

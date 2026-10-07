@@ -1,7 +1,9 @@
 # Roadmap: agent-visible evidence and control
 
-Status: documentation foundation complete; runtime milestones P1-P7 proposed.
-Updated 2026-10-05. This is the current design plan. Historical port checkboxes
+Status: P1 local observation surface delivered with offline acceptance evidence.
+P2–P7 remain proposed; the P7 local baseline is available. U1 first-run
+usability delivered. Updated 2026-10-07.
+This is the current design plan. Historical port checkboxes
 in [TODO](../TODO.md) do not select the next task.
 
 Read [system design](system-design.md) for purpose and ownership, then the
@@ -24,13 +26,14 @@ guarantees. A plan checkbox is completed only after its deliverable and gate.
 | Milestone | Dependency | Agent-visible outcome | Status |
 |---|---|---|---|
 | P0 Orientation | None | One authority map, current workflow, bounded plan and learning rules | Complete: documents in this change |
-| P1 Observe | P0 | Identify exact input and inspect a bounded inventory without a model | Proposed; first implementation slice |
+| P1 Observe | P0 | Identify exact input and inspect a bounded inventory without a model | Delivered local surface; focused gates/build pass, full-suite Windows baseline limits below |
 | P2 Bind context | P1 | Inspect the source version that belongs to the change | Proposed |
 | P3 Explain execution | P1, P2 | Inspect result coverage, provenance and validation evidence | Proposed |
 | P4 Bound execution | P3 | Control total work and distinguish failure, cancellation and fallback | Proposed |
 | P5 Reuse and resume | P2-P4 | Reuse valid evidence and completed work with explicit validity rules | Proposed |
 | P6 Unify workflows | P1-P5 | Use the same concepts through CLI, packets and skills | Proposed |
-| P7 Evaluate and promote learning | Baseline at P1; compare after each milestone | Demonstrate improved review quality/resource use and retain verified lessons | Proposed |
+| P7 Evaluate and promote learning | Baseline at P1; compare after each milestone | Demonstrate improved review quality/resource use and retain verified lessons | Local byte baseline delivered; broader evaluation proposed |
+| U1 First-run usability | None | A person sets up once and picks a review workflow without reading the docs | Delivered: offline gates below |
 
 Independent pure helpers can be developed together when a task warrants it.
 Dependencies express required semantics, not permission for autonomous work
@@ -38,24 +41,36 @@ outside the user's requested scope.
 
 ## P1. Offline identity, inventory and planning surface
 
-Problem: a label and full diff do not provide an inexpensive, stable entry
-point. Existing packet hashing helps identify bytes but omits resolved source
-and bounded navigation. First vertical slice: one explicit committed revision,
-a versioned bounded inventory, raw input digest and original-coordinate evidence
-expansion, with legacy behavior covered. Then complete the remaining sources
-and gates below before marking P1 complete.
+Delivered local surface: `-inventory`, `-evidence id`, `-plan` and
+`-capabilities`, with `meat.observe` version 1 JSON, bounded pages,
+snapshot-required evidence expansion and stale continuation rejection.
+Snapshots identify raw bytes, resolved committed objects and collection policy;
+file/hunk/envelope entries retain original coordinates and deterministic exact
+move relationships. Planning forecasts the existing API partitions without
+dispatch, cache access or claimed call/token/cost bounds. Legacy paths retain
+their contracts. Current spelling and wire encoding are owned by
+[observe](../specs/observe.md).
 
-Build the request/snapshot descriptor and deterministic inventory first, with
-an opt-in machine format. Resolve commit/range objects once; explicitly label
-context availability for mutable and stdin sources. Include original-coordinate
-file/hunk references, raw/numbered sizes, compiler eligibility, and pagination.
-Add local capability discovery and the deterministic portion of execution
-planning. Freeze command spelling, schema encoding, versioning and failure
-output as part of this slice.
+Committed before/after tree identities are available. Mutable sources retain
+captured diff bytes with context explicitly unavailable and consistency
+unverified; stdin provenance remains unknown. P1 does not implement captured
+mutable source-file context, snapshot-bound read/search tools, or the full A2/A5
+target contracts. Those dependencies remain in P2 and P4.
 
-Owners: [main](../src/cli/main.ts), [prompt](../src/cli/prompt.ts),
-[shape](../src/cli/shape.ts), [diff](../src/meat/diff.ts),
-[chunk](../src/meat/chunk.ts). Contract: A1-A3 and local portion of A5.
+Owners: [snapshot](../src/cli/snapshot.ts), [observe](../src/cli/observe.ts),
+[main](../src/cli/main.ts), [diff](../src/meat/diff.ts),
+[chunk](../src/meat/chunk.ts). Target clauses: local portions of A1–A3 and A5.
+Implementation evidence: [snapshot cases](../test/cli/snapshot.test.ts),
+[observation cases](../test/cli/observe.test.ts).
+
+Validation: `npm run build` and all 13 snapshot plus 16 observation cases pass.
+The full suite on this Windows checkout retains 67 baseline failures: shell-stub
+ENOENT, stdin/merge probes and CRLF-converted frozen fixtures. Unchanged HEAD
+reproduced 69 failures in an isolated checkout; synchronizing stale meat copies
+removed one and repairing show-me discovery removed another. This is
+local P1 acceptance evidence, not a globally green full-suite claim. Revalidate
+the full gate in an environment preserving fixture bytes and executable/link
+semantics; expected conformance output must not be regenerated to mask it.
 
 Gate: offline fixtures cover commit, root/merge commit, both range forms,
 staged, worktree and stdin. A ref changing after resolution cannot change
@@ -65,10 +80,54 @@ one ordered selection; stale continuations fail. No provider/gateway/auth
 network call occurs. Unsupported input can still receive an honest inventory.
 Legacy commands retain their contracts.
 
+Compatibility decision: observation is separate from legacy `-json`/`-prompt`
+and does not alter compiler/rubric identity or the legacy cache namespace. See
+[scoped decisions](decisions.md#offline-observation-has-a-separate-source-and-wire-contract).
+
+## U1. First-run usability
+
+Problem (reality check, 2026-10-07): every feature worked, but reaching one
+required the README. `meat` was not on PATH, bare `meat HEAD` failed without an
+API key and named no alternative, a flag after the revision produced only
+"too many arguments", help listed `-prompt`/`-agent` only among flags,
+PowerShell redirection altered packet bytes, and `-agent` echoed the agent's
+whole log including the packet.
+
+Delivered: `npm run setup` (build, `npm link`, both skills, doctor);
+`meat -doctor`; help that leads with no-key workflows; failure hints for
+misplaced flags, workflow words and missing credentials; `-o file` for exact
+output bytes; quiet `-agent` with `-verbose`; captured Git stderr; README
+quick start organized by what the user already has. Contract and divergences
+from the Go baseline: [CLI first-run usability](../specs/cli.md#first-run-usability).
+Rationale: [decision](decisions.md#first-run-usability-adds-guidance-without-changing-go-baseline-contracts).
+
+Gate: offline [usability](../test/cli/usability.test.ts) and
+[agent](../test/cli/agent.test.ts) cases cover flag validation, help ordering,
+each hint with unchanged Go text and exit codes, `-o` byte equality and no file
+on failure, doctor readiness without printing a credential value, and hidden,
+verbose and failure agent logs. Windows `npm` bin wrappers were exercised in a
+scratch prefix. No live model or subscription review is part of the gate.
+Validation 2026-10-07: `npm run check` passed 909 of 909 tests and
+`npm run build` passed on Windows 11 (Node 22.23) and on Linux in a
+`node:22.18-bookworm-slim` container (the minimum supported Node) using a copy
+of the same working tree with fresh dependencies. On Linux the built CLI ran
+`-doctor`, `-look`, `-prompt -o` (bytes equal to stdout) and a global
+`npm install -g --prefix` bin link. The Linux smoke test found that
+`meat -look HEAD | head` crashed with an unhandled `EPIPE`; that is fixed and
+covered by a regression case.
+
+Not included: verb subcommands, shell completion, a published npm package or
+plugin, and native Grok execution. A user's own `npm link` remains a manual,
+reversible step (`npm unlink -g meat`).
+
 ## P2. Snapshot-bound source and tools
 
 Problem: reading today's checkout can invalidate reasoning about an older
 revision, index, or piped diff.
+
+P1 supplies immutable Git tree identities and honest diff-only mutable/stdin
+context labels. P2 must add bound reads/search and captured mutable context;
+the presence of an observation snapshot alone does not satisfy this milestone.
 
 Provide a context adapter with explicit before/after/captured/live policies.
 Begin with immutable Git trees, then captured index/worktree evidence. Reads
@@ -172,10 +231,21 @@ Route new workflows through shared capability/request/artifact definitions.
 Offer bounded packet selection with parent coverage references and explicit
 context limitations. Explanations cite input artifacts and observed evidence.
 Update the canonical [meat skill](../.claude/skills/meat/SKILL.md), preserving
-discovery links and routing useful visuals through show-me. Make the credential
+discovery paths and keeping visual guidance built in and portable. Make the credential
 step explicitly API-only and preserve requested compiled-output intent when
 credentials are missing. Use the smallest sufficient operation first and stop
 when evidence meets the requested outcome.
+
+Delivered independently: the current-session skill defaults to offline packets,
+uses bounded observation for oversized input, and separates explicit fresh-agent
+and compiled-output requests. `npm run skill:install -- all` installs portable
+Codex/Claude personal skills bound to this checkout, and `npm run skill:sync`
+updates project discovery copies. [Installation tests](../test/skill-install.test.ts)
+verify offline invocation from another repository. This does not complete P6's
+shared request/result or bounded packet contracts.
+The [skill/code audit](../analysis/skill-code-audit-2026-10-07/REPORT.md) records
+behavioral alignment checks and corrected provider/cache, paging and discovery
+instructions; it does not assert deterministic agent interpretation.
 
 Owners: CLI entry/prompt/agent/render and canonical skill.
 Contract: A1, A3, A6, A9; [workflow](agent-workflow.md).
@@ -188,6 +258,27 @@ Legacy full packets stay available. New packet subsets reconcile to parent
 coverage; an explanation never acquires compiler guarantees from its wrapper.
 
 ## P7. Evaluate usefulness and promote verified lessons
+
+The reproducible local byte baseline is delivered in
+[scripts/observe-baseline.ts](../scripts/observe-baseline.ts), run with
+`npm run observe:baseline`. Its synthetic input fixes 120 files with 20 changed
+declarations each and verifies ordered inventory reconstruction and exact
+selected-file byte reconstruction without model dispatch.
+
+| Measurement | Bytes or count |
+|---|---:|
+| Raw input bytes | 106840 |
+| Numbered input bytes | 133240 |
+| Legacy full packet bytes | 107829 |
+| First inventory page bytes (default 20 entries) | 6064 |
+| Total inventory entries / pages | 240 / 12 |
+| Expanded first-file bytes | 886 |
+| Model calls | 0 |
+
+Elapsed time and semantic review quality are not measured. The first page is
+orientation, not coverage equivalent to the full packet; these counts do not
+establish review-quality gains or model-cost savings. Broader P7 evaluation
+and comparisons remain proposed.
 
 Start a reproducible baseline during P1. Reuse current deterministic fixtures
 and add cases only for new contracts. Evaluate after each delivered milestone;
@@ -211,7 +302,7 @@ or unbounded background learning is part of the plan.
 
 | Choice | Current direction | Must be settled before |
 |---|---|---|
-| New command names, schema wire shape and encoding | Opt-in; preserve legacy output | P1 implementation merge |
+| New command names, schema wire shape and encoding | Settled for P1 in [observe](../specs/observe.md); preserve legacy output | Revisit on observation schema/collection changes |
 | Mutable context capture granularity | Capture declared search scope; mark unavailable context honestly | P2 exposing each context policy |
 | Global cross-chunk validation | Initially report unperformed checks; assess paired partitioning/global validation with fixtures | Any claim of whole-input move symmetry |
 | Hard token/cost enforcement | Advertise only adapters with conservative enforceable reservations | P4 exposing a hard cap |

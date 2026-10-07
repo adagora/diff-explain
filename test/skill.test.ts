@@ -28,16 +28,12 @@ const SOURCE_TOKENS = ["HEAD", "revision", "range", "stdin"] as const;
 const MODE_FLAGS = ["-staged", "-w", "-look", "-json"] as const;
 const ENV_KEYS = ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "XAI_API_KEY", "MEAT_MODEL"] as const;
 
-test("show-me is discoverable from every host and resolves beside the canonical meat skill", () => {
-  const canonical = discoveryPath(".claude/skills", "show-me");
-  const parsed = parseSkillMarkdown(readFileSync(canonical, "utf8"));
-  assert.equal(parsed.fields["name"], "show-me");
-  assert.ok(parsed.fields["description"]?.trim());
+test("meat skill copies give portable visual guidance with no platform-specific opener", () => {
   for (const root of HOST_SKILL_ROOTS) {
-    const discovered = discoveryPath(root, "show-me");
-    assert.equal(realpathSync(discovered), realpathSync(canonical));
-    const meatPath = realpathSync(discoveryPath(root, "meat"));
-    assert.equal(realpathSync(join(dirname(meatPath), "../show-me/SKILL.md")), realpathSync(canonical));
+    const raw = readFileSync(discoveryPath(root, "meat"), "utf8");
+    assert.match(raw, /call tree/);
+    // `open` is macOS-only (openvt on Debian/Ubuntu); `start`/`xdg-open` are Windows/Linux-only.
+    assert.doesNotMatch(raw, /(^|[\s(])(open|xdg-open|start)\s+\S+\.html?\b/m);
   }
 });
 
@@ -196,10 +192,8 @@ describe("agent skill SKILL.md", () => {
     for (const key of ENV_KEYS) {
       assert.ok(body.includes(key), `body missing provider key ${key}`);
     }
-    const dones = body.match(/\*\*Done when\*\*/g) ?? [];
-    const steps = body.match(/^## /gm) ?? [];
-    assert.ok(steps.length >= 4, `expected a step sequence, got ${steps.length} ## headings`);
-    assert.equal(dones.length, steps.length, `each step needs a Done when (steps=${steps.length} dones=${dones.length})`);
+    assert.ok(body.includes("-prompt HEAD"), "current-session explanations must have an explicit offline launch");
+    assert.ok(body.includes("-inventory") && body.includes("-evidence") && body.includes("-snapshot"), "large-input navigation must identify parent evidence");
   });
 
   test("Claude, Codex, and Grok project paths exist and are byte-identical", () => {

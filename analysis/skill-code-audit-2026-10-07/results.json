@@ -1,0 +1,1004 @@
+{
+  "schema": "meat.skill-code-audit",
+  "version": 2,
+  "checked_at": "2026-10-07T10:59:41.445Z",
+  "git_head": "fe29b3991e475d16429c350d5fcd3a070cd5a6c8",
+  "source_identity": [
+    {
+      "path": ".claude/skills/meat/SKILL.md",
+      "bytes": 4351,
+      "sha256": "04b19ee7057b2c50778aee023884626510e5b11784a6e2a291efa5c35d966a4e"
+    },
+    {
+      "path": ".agents/skills/meat/SKILL.md",
+      "bytes": 4351,
+      "sha256": "04b19ee7057b2c50778aee023884626510e5b11784a6e2a291efa5c35d966a4e"
+    },
+    {
+      "path": ".grok/skills/meat/SKILL.md",
+      "bytes": 4351,
+      "sha256": "04b19ee7057b2c50778aee023884626510e5b11784a6e2a291efa5c35d966a4e"
+    },
+    {
+      "path": ".claude/skills/show-me/SKILL.md",
+      "bytes": 3424,
+      "sha256": "2b5635cce0185faee035df02e058ab8f50d7e3b495e84d68efce135b4c550662"
+    },
+    {
+      "path": ".agents/skills/show-me/SKILL.md",
+      "bytes": 3424,
+      "sha256": "2b5635cce0185faee035df02e058ab8f50d7e3b495e84d68efce135b4c550662"
+    },
+    {
+      "path": ".grok/skills/show-me/SKILL.md",
+      "bytes": 3424,
+      "sha256": "2b5635cce0185faee035df02e058ab8f50d7e3b495e84d68efce135b4c550662"
+    },
+    {
+      "path": "scripts/install-meat-skill.ts",
+      "bytes": 4400,
+      "sha256": "0e322fc07c531f7a718a2ab390ecc29a7c1014c25112d3f29be630354f706ff1"
+    },
+    {
+      "path": "src/cli/main.ts",
+      "bytes": 30344,
+      "sha256": "36b460b0fcabf1a79cee4fc8dae528b3dc1411b0ec7c2c064874f5fed75e462e"
+    },
+    {
+      "path": "src/cli/agent.ts",
+      "bytes": 6119,
+      "sha256": "ce40a0985e39aebf070a0bd3607ebc8f8e3591d727b95a4f33d33a54d1324e8a"
+    },
+    {
+      "path": "src/cli/prompt.ts",
+      "bytes": 1731,
+      "sha256": "6ad4d4f58a6e2fe1c4684675481cfd5b4e59901e925e9cdd8eca07b736b631e2"
+    },
+    {
+      "path": "src/cli/snapshot.ts",
+      "bytes": 8614,
+      "sha256": "3a5e865b59068f067208d46906e80cf93ce6a37793f041de5d2d6cb3ca5ea0db"
+    },
+    {
+      "path": "src/cli/observe.ts",
+      "bytes": 22211,
+      "sha256": "1636a0ee6a15b4d1c3cfd8704533112ae8128cdd532ec98e92fbb06f7e794afa"
+    },
+    {
+      "path": "src/cli/cache.ts",
+      "bytes": 7389,
+      "sha256": "c01d65a969ee31b5e06547750cda1924e3f024c21874c38fe1778d5cd6f6197b"
+    },
+    {
+      "path": "src/meat/provider.ts",
+      "bytes": 4512,
+      "sha256": "14fa7ba07814ca4f8119f7ae557d293e0d75f343076485cc0862500aa4cb8b31"
+    },
+    {
+      "path": "src/meat/meat.ts",
+      "bytes": 20988,
+      "sha256": "2220475e69e6c89bef7b83188b44d6a8e5a7dbeb155a64cc5a682ac22f6dcf3d"
+    },
+    {
+      "path": "src/meat/rubric.ts",
+      "bytes": 29635,
+      "sha256": "9551f780f9cb5b4694a1fa6218a64bd8ea114294787960370768aa93776337aa"
+    },
+    {
+      "path": "test/skill.test.ts",
+      "bytes": 9853,
+      "sha256": "6225f8701787886599cfc6f2e499c5a0aa2a4a5dd295a7331b238c9a783527e2"
+    },
+    {
+      "path": "test/skill-install.test.ts",
+      "bytes": 7716,
+      "sha256": "54a3c02a47f3e4aaec30b6b6e438f06f7d4badf17870f53d49b7272c1cd587f0"
+    },
+    {
+      "path": "test/cli/skill-contract.test.ts",
+      "bytes": 4541,
+      "sha256": "5f8a0dbf39bf25cf1e0d6a050f3e8e4dc28f1463b18f7df72af47e182824b7d4"
+    },
+    {
+      "path": "test/cli/agent.test.ts",
+      "bytes": 6271,
+      "sha256": "476a924e2a701c9b6d6e775fd78d9410dcfbfd100ac9a9a62ca15bbf88367ab1"
+    },
+    {
+      "path": "test/cli/observe.test.ts",
+      "bytes": 22056,
+      "sha256": "704f588464b29f8ea9f67d730ac98f26c45b379d96b31f3b65c0d7ac8a303a99"
+    },
+    {
+      "path": "test/cli/snapshot.test.ts",
+      "bytes": 10646,
+      "sha256": "303b19c7f39a861aa9091c1b89d232b6746a9235da2be4db5603c4faa6c74ace"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 279,
+      "sha256": "f2d0107d6b44d64e4fc6b6ab1a5e1fd0ebd8ab7d9cb90a8b9dad134c9253402e"
+    },
+    {
+      "path": "package.json",
+      "bytes": 952,
+      "sha256": "dfae71d4529aa80892f82492274018f43cae11bccdb12966dbb514b68d26f485"
+    },
+    {
+      "path": "test/fixture-checkout.test.ts",
+      "bytes": 2548,
+      "sha256": "c50442d97315c95d7903602902665f938085259568ecc2cdbe26e97f4d54c6d4"
+    },
+    {
+      "path": "test/cli/main.test.ts",
+      "bytes": 22832,
+      "sha256": "f5b5d603e11d1a96fbbbf236226f0bd109be7c85610eab42662fbb5cf789c349"
+    },
+    {
+      "path": "test/cli/prompt.test.ts",
+      "bytes": 4741,
+      "sha256": "16016442ece0227b7751bacf03cd266c24a4a8359ff09f3226ae2568212389ec"
+    },
+    {
+      "path": "test/cli/stdin.test.ts",
+      "bytes": 4501,
+      "sha256": "5802fd05b96166d6af2cb776fa612968e8b741f26fcc6d65f30631a61c0527c9"
+    },
+    {
+      "path": "test/cli/render.test.ts",
+      "bytes": 9613,
+      "sha256": "e73290b6f6f332a49a6c84264e3b8c1b2437438ca1dec2e68083e964acdd780f"
+    }
+  ],
+  "project_discovery_matches": true,
+  "personal": [
+    {
+      "host": ".agents",
+      "present": true,
+      "sha256": "b34436f0edccf461981fd09d8509ef19c9ae0f9507c4a25da63100de202be509",
+      "canonical_binding_matches": true,
+      "metadata_matches": true,
+      "entry_matches": true
+    },
+    {
+      "host": ".claude",
+      "present": true,
+      "sha256": "b34436f0edccf461981fd09d8509ef19c9ae0f9507c4a25da63100de202be509",
+      "canonical_binding_matches": true,
+      "metadata_matches": true,
+      "entry_matches": true
+    }
+  ],
+  "checks": {
+    "focused": {
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "--test",
+        "test/skill.test.ts",
+        "test/skill-install.test.ts",
+        "test/cli/skill-contract.test.ts",
+        "test/cli/observe.test.ts",
+        "test/cli/snapshot.test.ts",
+        "test/fixture-checkout.test.ts"
+      ],
+      "exit": 0,
+      "error": null,
+      "counts": {
+        "tests": 44,
+        "pass": 44,
+        "fail": 0,
+        "skipped": 0
+      },
+      "summary": [
+        "# tests 44",
+        "# pass 44",
+        "# fail 0",
+        "# skipped 0"
+      ]
+    },
+    "auth": {
+      "command": [
+        "C:\\nvm4w\\nodejs\\node.exe",
+        "--test",
+        "test/cli/agent.test.ts"
+      ],
+      "exit": 0,
+      "error": null,
+      "counts": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "skipped": 0
+      },
+      "summary": [
+        "# tests 7",
+        "# pass 7",
+        "# fail 0",
+        "# skipped 0"
+      ]
+    },
+    "build": {
+      "command": [
+        "npm.cmd",
+        "run",
+        "build"
+      ],
+      "exit": 0,
+      "error": null,
+      "counts": {},
+      "summary": []
+    },
+    "full": {
+      "command": [
+        "npm.cmd",
+        "run",
+        "check"
+      ],
+      "exit": 0,
+      "error": null,
+      "counts": {
+        "tests": 900,
+        "pass": 900,
+        "fail": 0,
+        "skipped": 0
+      },
+      "summary": [
+        "# tests 900",
+        "# pass 900",
+        "# fail 0",
+        "# skipped 0"
+      ]
+    }
+  },
+  "focused_checks_passed": true,
+  "build_passed": true,
+  "full_suite_passed": true,
+  "recorded_file_types": "100644 d57a0a0afc2800a4cc7a7765e65a9c6c18e67b4f 0\t.agents/skills/show-me/SKILL.md\n100644 d57a0a0afc2800a4cc7a7765e65a9c6c18e67b4f 0\t.grok/skills/show-me/SKILL.md",
+  "frozen_fixture_identity": [
+    {
+      "path": "analysis/python-famous-commits-2026-08-02/django.live.diff",
+      "bytes": 9466,
+      "sha256": "dc0ac508542a63980966d2c3bf69869d42f5d34b5602c9d399062f9c1c93c4fb",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "analysis/python-famous-commits-2026-08-02/flask.live.diff",
+      "bytes": 6739,
+      "sha256": "774bd4eba0db94aa0b49b7c3c884f16785521cd83a63125a09d6391b51f67ff3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "analysis/python-famous-commits-2026-08-02/pytest.live.diff",
+      "bytes": 4573,
+      "sha256": "4220686e18edf1402a763a324064e13fa098c46d42f0b2a5e8c876c644d2b48a",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "analysis/site-demo-commits-2026-08-02/go.original.diff",
+      "bytes": 2895,
+      "sha256": "84122966a707b61f131d9d252eeb02b65d111a2e9426d3311c56dcecbc68dbac",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "analysis/site-demo-commits-2026-08-02/python.original.diff",
+      "bytes": 7812,
+      "sha256": "f664e952d7e5f22827bbb3f2fd407a37ff54a18c331b3d384c4113e89d94256d",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "analysis/site-demo-commits-2026-08-02/rust.original.diff",
+      "bytes": 5090,
+      "sha256": "534d2aa89436885fbdf277cbd31fcd29f857a234eb1d889ba4b6f12e3922b42e",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/cache-key/cases.json",
+      "bytes": 1137,
+      "sha256": "fd68c815e05e396917b35780ea95560cd5efa0417bb30748c9f140601c20375e",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/django-526b1b414d8e.json",
+      "bytes": 21806,
+      "sha256": "e7ca4197ed5361c5ed5f0d6dda3af9f72ce6e026fb060c69a970fd4661ca7bcb",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/django.live.json",
+      "bytes": 15966,
+      "sha256": "231531dcdf5833d56fd842d702eeae1a2628f2d3c9409beda1c1502b0049f755",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/flask-c17f37939073.json",
+      "bytes": 15504,
+      "sha256": "64a34287434cedd33596d493f683ed06dd5efce6e23d4de601390e7c589e8f33",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/flask.live.json",
+      "bytes": 12610,
+      "sha256": "b5fc5e621131f3aeeac872495b5cdf3c369c1c392a9fd302c7ed615926de2fd8",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/go.original.json",
+      "bytes": 4979,
+      "sha256": "15fdaa7361b5c70e6bb599ebac252606f7e8d774767e0c2fce020f7d3380f1cf",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/pytest-b4e846616cbb.json",
+      "bytes": 10545,
+      "sha256": "c765cf9f559cbc06c71c39c21d4a094bf7daf80fec8b73cde1c1ada20f20682f",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/pytest.live.json",
+      "bytes": 8543,
+      "sha256": "522f3c15e5dfa6b7efceadea29af779d13ac2826227d0fded392b849300268d5",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/python.original.json",
+      "bytes": 7779,
+      "sha256": "f28aaec5561d580011c52186c6158771fee01fded2a9f74af11aa3ad0a276cc4",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/diff-layout/rust.original.json",
+      "bytes": 7050,
+      "sha256": "698d76598f9ec92915003199d7d568074511098b8b7700b6fef2b461ad5d2a6c",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/elision/django-526b1b414d8e.txt",
+      "bytes": 38,
+      "sha256": "1695b7de19e73a223377918f2f6bbfc85c8841adf6b1962d4288940bb997dcd7",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/elision/flask-c17f37939073.txt",
+      "bytes": 38,
+      "sha256": "5d79ce8056ca58d62e45ba782bf8d0d1f53c20683b1ee80d79aff0710c4d429a",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/elision/pytest-b4e846616cbb.txt",
+      "bytes": 38,
+      "sha256": "995852549802ea0e496fae35fb49d4d9ef24d6eb881687820ae0cd6499e6beeb",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/django-526b1b414d8e.json",
+      "bytes": 75,
+      "sha256": "e66a64f660844660ef73d90e6e8ab5cde19a2005cd36bee66d9ca1ae2f2322a3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/django.live.json",
+      "bytes": 75,
+      "sha256": "e66a64f660844660ef73d90e6e8ab5cde19a2005cd36bee66d9ca1ae2f2322a3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/flask-c17f37939073.json",
+      "bytes": 75,
+      "sha256": "e66a64f660844660ef73d90e6e8ab5cde19a2005cd36bee66d9ca1ae2f2322a3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/flask.live.json",
+      "bytes": 74,
+      "sha256": "4723a06e43abc38a66d779d1c1601dfebe62e948b1bae3c0249e935b1ba086bd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/go.original.json",
+      "bytes": 73,
+      "sha256": "d75651141db6c82677ca8c97a4fe5fa1c20415c0d8e07008c1ff4ae14470a27c",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/pytest-b4e846616cbb.json",
+      "bytes": 74,
+      "sha256": "4723a06e43abc38a66d779d1c1601dfebe62e948b1bae3c0249e935b1ba086bd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/pytest.live.json",
+      "bytes": 74,
+      "sha256": "4723a06e43abc38a66d779d1c1601dfebe62e948b1bae3c0249e935b1ba086bd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/python.original.json",
+      "bytes": 75,
+      "sha256": "e66a64f660844660ef73d90e6e8ab5cde19a2005cd36bee66d9ca1ae2f2322a3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/fits-single-run/rust.original.json",
+      "bytes": 74,
+      "sha256": "4723a06e43abc38a66d779d1c1601dfebe62e948b1bae3c0249e935b1ba086bd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/django-526b1b414d8e.json",
+      "bytes": 206,
+      "sha256": "f988f40851402a3074943b8136e5a7b00bbbeca5663eceb267258e907ac8c0d9",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/django.live.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/flask-c17f37939073.json",
+      "bytes": 55,
+      "sha256": "e6f2a4c2cf4ed63dbb9dd9243e151f7a70d9fc2344fab1572f3f436aebec9254",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/flask.live.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/go.original.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/pytest-b4e846616cbb.json",
+      "bytes": 105,
+      "sha256": "fbbf2f97196c9c3235863e4169506f4edfed087184d90592f3b3b24efdc61d06",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/pytest.live.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/python.original.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/imports/rust.original.json",
+      "bytes": 152,
+      "sha256": "6af166e5481e305a11c3af7f5e1c4062a91673f4d069b2ce240309d8ce74748a",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/json-wire/cases.json",
+      "bytes": 748,
+      "sha256": "54474d698b4a04c66e6e8155385f115a115510fbc2eb5400da9917017fdac33b",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/django-526b1b414d8e.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/django.live.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/flask-c17f37939073.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/flask.live.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/go.original.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/pytest-b4e846616cbb.json",
+      "bytes": 292,
+      "sha256": "d996f4027f5f0c551e2bb3b8594aabd74f26a221dbd0a32e535ae5a4382f048d",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/pytest.live.json",
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/python.original.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/moves/rust.original.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/django-526b1b414d8e.txt",
+      "bytes": 15784,
+      "sha256": "e25da03e17472cf324c36080e28a9352b39e78f1e1f7b2289764c37326694270",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/django.live.txt",
+      "bytes": 10390,
+      "sha256": "acadd1649deba0b49802f801b1e2becc2f12a9f373188e1cfd08cfb415627aab",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/flask-c17f37939073.txt",
+      "bytes": 9739,
+      "sha256": "61d51195301dbc12ec594f652b3c63070f408a19c35d9c0c552cae3a3161e155",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/flask.live.txt",
+      "bytes": 7451,
+      "sha256": "a96a4836b33fd49717e8f1d18ce6111c95809dcc830a5018646d1a32ec182894",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/go.original.txt",
+      "bytes": 3123,
+      "sha256": "fd1778a12034b71632ee59a319ad225479f2f3f56ff0a15f6e05f8623d492c8e",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/pytest-b4e846616cbb.txt",
+      "bytes": 7104,
+      "sha256": "bbf352bdec4a450352949b0f920987a377f8d1a4dffc76020c6ebcd1eba806af",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/pytest.live.txt",
+      "bytes": 5065,
+      "sha256": "d43aba08da807bdda2a578db00fe471308b9469bab2faa31a124aae41949fdd5",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/python.original.txt",
+      "bytes": 8280,
+      "sha256": "e384b15c224ffeb986e6186582723c4744b52a5aafb706670d2387f0faed351e",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/numbered/rust.original.txt",
+      "bytes": 5514,
+      "sha256": "4e8b869103eb72e6078432245fa46e98fee30d3083db88434fbcaf7de5589234",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/openai-request/replay.json",
+      "bytes": 411,
+      "sha256": "18076b3add9faa9f69e80c523c4fcc317790a78cedc8a5e08054c82eed9db3ce",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/plan-compile/django-526b1b414d8e.json",
+      "bytes": 7013,
+      "sha256": "cad6ec78fcc1e14794900b9b305221fbc10569b9598fe42ec92df397e6faa51f",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/plan-compile/flask-c17f37939073.json",
+      "bytes": 5266,
+      "sha256": "2fe4cd60690efd4b394778e984048bf5c15362a95deaac35d03f82799eeb465b",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/plan-compile/pytest-b4e846616cbb.json",
+      "bytes": 3094,
+      "sha256": "2ce966e14d1906059be12d3324ab3ca776b5eedf7acd0d0220642f75eaddaccd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/prompt-surface.txt",
+      "bytes": 72151,
+      "sha256": "441f5e6e28ad3addd70890fc5d4ecfcf1e66458e737e4395b479784c91a704bb",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/protocol-version.txt",
+      "bytes": 42,
+      "sha256": "41af040a0e783726e4fca81f2c3d47dc8213595c1c78a4631134e4510cd2c63d",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/rubric-hash.txt",
+      "bytes": 16,
+      "sha256": "31a775011c26d968f0f2658411d772020519a461dc7cb690edf5495a02f6c3e9",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/django-526b1b414d8e.json",
+      "bytes": 3309,
+      "sha256": "ebd32207b5b954d1915acce85cab47d11654f6897fd0b512c16ebc1649e831ae",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/django.live.json",
+      "bytes": 2329,
+      "sha256": "0102b93685ba77a56080184d547cae3ed13e196d143dbd1bc8b30c47d5df46e5",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/flask-c17f37939073.json",
+      "bytes": 2359,
+      "sha256": "7fb7a77bf4911fd3d0c3599300a4aa186b4c1f2610e51101319b4beec3baf6d3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/flask.live.json",
+      "bytes": 1799,
+      "sha256": "e98ac8067d411a19ea5e36b840f6297d7167a0783bdd94e542b1e31ac1ae7697",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/go.original.json",
+      "bytes": 779,
+      "sha256": "7dc8998437628ae93f85de009aad387b7cf4e80130e43455a33814caa59b9c13",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/pytest-b4e846616cbb.json",
+      "bytes": 1609,
+      "sha256": "5c62ff28fa37f0a7a7cc9de710ac7a96caa6edd580b0012f2a010c40be452106",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/pytest.live.json",
+      "bytes": 1249,
+      "sha256": "b9b80dfff8031c4c02773b7bf6f833298fa54e2ae1d58383bab6cdef71dd67d7",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/python.original.json",
+      "bytes": 1189,
+      "sha256": "c0435af96658f0199b28e474a0621116dfb66acec317a01b05f5b86d3ea66e1d",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/source-lines/rust.original.json",
+      "bytes": 1079,
+      "sha256": "719a79f71388f6df69569a1782b5ebe96b126503ca6888fe8971831cd502da5d",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django-526b1b414d8e.b16384.json",
+      "bytes": 15164,
+      "sha256": "c8259905fb919325a1d3a73649615973e32f790ffa43a4bb2578791ecc6aebdf",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django-526b1b414d8e.b2048.json",
+      "bytes": 16900,
+      "sha256": "2bb5afd83201934427b9316131a6fdd6a41aac09680087a365e9678d20978aba",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django-526b1b414d8e.b4096.json",
+      "bytes": 15611,
+      "sha256": "ba05ce06fdb161da19b2a6fa81164a79afd8af28fc681f0619a4120f964622d9",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django-526b1b414d8e.b8192.json",
+      "bytes": 15302,
+      "sha256": "aae2c71430536b46c1fdbfd07598630503a9200a8fe7b28752a365dfedfe86dc",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django.live.b16384.error.txt",
+      "bytes": 638,
+      "sha256": "b048ced84de7aa32861fc1a62444a9751628574ab51665c368d61e6cb70c3520",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django.live.b2048.error.txt",
+      "bytes": 638,
+      "sha256": "b048ced84de7aa32861fc1a62444a9751628574ab51665c368d61e6cb70c3520",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django.live.b4096.error.txt",
+      "bytes": 638,
+      "sha256": "b048ced84de7aa32861fc1a62444a9751628574ab51665c368d61e6cb70c3520",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/django.live.b8192.error.txt",
+      "bytes": 638,
+      "sha256": "b048ced84de7aa32861fc1a62444a9751628574ab51665c368d61e6cb70c3520",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask-c17f37939073.b16384.json",
+      "bytes": 9211,
+      "sha256": "ed77ad1aaab7049a4615590311fa585538b215a2aa4b6d2307671f9893e023e2",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask-c17f37939073.b2048.json",
+      "bytes": 10689,
+      "sha256": "f5172321b119e894c1a52bb9cf6b0baf4d978bfd0c1d525adb13815ecc374a3e",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask-c17f37939073.b4096.json",
+      "bytes": 9349,
+      "sha256": "ccef9bd43b0b169d8b7df874b951ebbce18d1ca83b3ca88067abed5af0b2c7ae",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask-c17f37939073.b8192.json",
+      "bytes": 9280,
+      "sha256": "8aba9e671e6bbb9d70e7f4a17983bae8fd21ddf9c29786d23c12e466364e00eb",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask.live.b16384.error.txt",
+      "bytes": 789,
+      "sha256": "aae2bbfad62abb3a01309fcb0450a0292c8a3656fb0a2eef31f0c638e72a7191",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask.live.b2048.error.txt",
+      "bytes": 789,
+      "sha256": "aae2bbfad62abb3a01309fcb0450a0292c8a3656fb0a2eef31f0c638e72a7191",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask.live.b4096.error.txt",
+      "bytes": 789,
+      "sha256": "aae2bbfad62abb3a01309fcb0450a0292c8a3656fb0a2eef31f0c638e72a7191",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/flask.live.b8192.error.txt",
+      "bytes": 789,
+      "sha256": "aae2bbfad62abb3a01309fcb0450a0292c8a3656fb0a2eef31f0c638e72a7191",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/go.original.b16384.json",
+      "bytes": 3386,
+      "sha256": "b9b39f1514b4c35b1e7b661ec4082ef332d148a16adead920b4842cf5a07b2b9",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/go.original.b2048.json",
+      "bytes": 3966,
+      "sha256": "ffe1f7c15fe38ebddd6ce99b211688cce9b72ab8923ca36be03e3533ffd50436",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/go.original.b4096.json",
+      "bytes": 3386,
+      "sha256": "b9b39f1514b4c35b1e7b661ec4082ef332d148a16adead920b4842cf5a07b2b9",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/go.original.b8192.json",
+      "bytes": 3386,
+      "sha256": "b9b39f1514b4c35b1e7b661ec4082ef332d148a16adead920b4842cf5a07b2b9",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest-b4e846616cbb.b16384.json",
+      "bytes": 6777,
+      "sha256": "3632e6b3c0135e4c299f1da5be7a886b91f603f29aad4048f31b050d50fad3cd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest-b4e846616cbb.b2048.error.txt",
+      "bytes": 135,
+      "sha256": "4fd5e74cec62ba1f8679de1e8cc1db9066028990a54834d285e61fd16699d389",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest-b4e846616cbb.b4096.json",
+      "bytes": 6915,
+      "sha256": "c3e4f3f4fdbcf1a20456d24dd5af1563ca7e02b38a365627eb4296401d53d97c",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest-b4e846616cbb.b8192.json",
+      "bytes": 6777,
+      "sha256": "3632e6b3c0135e4c299f1da5be7a886b91f603f29aad4048f31b050d50fad3cd",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest.live.b16384.error.txt",
+      "bytes": 327,
+      "sha256": "5909acecaf016f7c3b31fe1601e8138edd2d1cd1ff42128ed18935bf9fe88317",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest.live.b2048.error.txt",
+      "bytes": 327,
+      "sha256": "5909acecaf016f7c3b31fe1601e8138edd2d1cd1ff42128ed18935bf9fe88317",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest.live.b4096.error.txt",
+      "bytes": 327,
+      "sha256": "5909acecaf016f7c3b31fe1601e8138edd2d1cd1ff42128ed18935bf9fe88317",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/pytest.live.b8192.error.txt",
+      "bytes": 327,
+      "sha256": "5909acecaf016f7c3b31fe1601e8138edd2d1cd1ff42128ed18935bf9fe88317",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/python.original.b16384.json",
+      "bytes": 8019,
+      "sha256": "d4eebf28f5f9d3b91177d35a3f50a720131382ec768e1534144ed33642dd51cc",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/python.original.b2048.json",
+      "bytes": 8295,
+      "sha256": "fff84e7e8051dcaf22ecc021d620535cc5338cc904dec49a9d59896204f902b5",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/python.original.b4096.json",
+      "bytes": 8157,
+      "sha256": "2ef618f04f89d2357c5536ada6aab153a83d6b517cffa2a3cfcc2b3d209a3bbb",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/python.original.b8192.json",
+      "bytes": 8088,
+      "sha256": "a72da377743a58e521b8ae1aa05774469068742b9f28a54ed5ee1c3fbd00607e",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/rust.original.b16384.json",
+      "bytes": 5270,
+      "sha256": "5e855d86a346090dadfe70996a49a5168dd4037bb618a1ed750417a6b29dca1c",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/rust.original.b2048.json",
+      "bytes": 5849,
+      "sha256": "d2d6adbdefd24103b4ff9dfa79247bd9be8e1f93ddd1aa9506ae5a11626d95d3",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/rust.original.b4096.json",
+      "bytes": 5339,
+      "sha256": "419ee57d4b214d05a7b77cd1f5a19dd0ec7f9c21882c93e05f35a1aa2de2a554",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/split/rust.original.b8192.json",
+      "bytes": 5270,
+      "sha256": "5e855d86a346090dadfe70996a49a5168dd4037bb618a1ed750417a6b29dca1c",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/django-526b1b414d8e.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/django.live.txt",
+      "bytes": 638,
+      "sha256": "b048ced84de7aa32861fc1a62444a9751628574ab51665c368d61e6cb70c3520",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/flask-c17f37939073.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/flask.live.txt",
+      "bytes": 789,
+      "sha256": "aae2bbfad62abb3a01309fcb0450a0292c8a3656fb0a2eef31f0c638e72a7191",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/go.original.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/pytest-b4e846616cbb.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/pytest.live.txt",
+      "bytes": 327,
+      "sha256": "5909acecaf016f7c3b31fe1601e8138edd2d1cd1ff42128ed18935bf9fe88317",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/python.original.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "conformance/vectors/validate/rust.original.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "testdata/python/django-526b1b414d8e.diff",
+      "bytes": 14468,
+      "sha256": "0be8fc1840ae46a565a51000ac57736fa2d52cbd0191ea0fc4b27b33253d9c64",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "testdata/python/django-526b1b414d8e.golden.diff",
+      "bytes": 6685,
+      "sha256": "4ffcb85edc53912dd02ed09221da11dfec45d821bad930f684cb07fa8126f034",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "testdata/python/flask-c17f37939073.diff",
+      "bytes": 8803,
+      "sha256": "4808f92a562eb33dd32d1603f442fd2e2a858f2373917844630168ce659eb168",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "testdata/python/flask-c17f37939073.golden.diff",
+      "bytes": 5037,
+      "sha256": "b5dc61f5fc526953aef7efca27bddfd371f441fa415cbeba86c82a176d708d15",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "testdata/python/pytest-b4e846616cbb.diff",
+      "bytes": 6468,
+      "sha256": "e4b0d2c4859faf8a1f39acb2a9469bb3cd2ef501a2a546fdfeae34cee9a6cd90",
+      "unchanged_from_head": true
+    },
+    {
+      "path": "testdata/python/pytest-b4e846616cbb.golden.diff",
+      "bytes": 2615,
+      "sha256": "828a1fa332b6a51a3cb7306d9a4640e6b5dd5c55e02d9ea69bbbbfc97cb12db7",
+      "unchanged_from_head": true
+    }
+  ],
+  "live_model_calls": 0,
+  "live_subscription_reviews": 0,
+  "limits": [
+    "Skill selection and explanations remain model decisions, not deterministic compiler execution.",
+    "Subscription process tests use local fake CLI shims; no live account authentication is performed.",
+    "The installed launcher requires this checkout; discovery metadata or checkout moves require reinstallation."
+  ]
+}

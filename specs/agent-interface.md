@@ -1,11 +1,22 @@
-# Agent interface: proposed contracts
+# Agent interface: target contracts and adoption
 
-Status: **proposed, unimplemented**, 2026-10-05. This document defines the target
+Status: **partially implemented at P1; remaining contracts proposed**, 2026-10-07.
+The current [observation contract](observe.md) owns shipped schema, flags and
+guarantees for local snapshots, inventory/evidence, capabilities and partition
+forecasts. This document defines the broader target
 semantics for the [system design](../docs/system-design.md) and milestones in
-the [roadmap](../docs/roadmap.md). Names below are logical contracts, not current
-TypeScript exports, CLI flags, tool names, or JSON fields. The current surfaces
+the [roadmap](../docs/roadmap.md). Unless mapped by a current subject spec,
+names below are logical contracts, not current TypeScript exports, CLI flags,
+tool names, or JSON fields. The current surfaces
 are described in [cli](cli.md), [agent-loop](agent-loop.md), [tools](tools.md),
 and [cache](cache.md).
+
+P1 resolves committed evidence and exposes immutable tree identities, but does
+not bind execution read/search tools to them. Mutable sources retain diff bytes
+with context unavailable and capture consistency unverified; captured mutable
+context and source reads remain P2. The local plan is a deterministic partition
+forecast, not the full A5 budgeted execution contract. Receipts, aggregate
+budgets, evidence-aware cache/resume and workflow unification remain proposed.
 
 ## A1. Request and capability discovery
 
