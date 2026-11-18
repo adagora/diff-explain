@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // The vocabulary every other file in the engine is written against: a
 // conversation is an ordered list of Messages, each carrying an ordered list
 // of Blocks; a Tool is one function the model may call; a Response is what

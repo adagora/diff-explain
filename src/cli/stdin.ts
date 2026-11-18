@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // stdin.ts (cmd/meat/stdin.go): owns the *file-mode* stdin check `readDiff`
 // uses to decide whether to abridge piped data or fall back to summarizing
 // HEAD. This is a deliberately different mechanism from the ioctl-based

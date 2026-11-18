@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // openai.ts is meat/openai.go: OpenAIModel, a built-in Model backed by the
 // OpenAI Responses API. Uses streaming responses (ChatGPT-backed exe.dev
 // integrations require it) but `generate` still returns one complete

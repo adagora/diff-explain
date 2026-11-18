@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // imports.ts — the mandatory (compiler-owned) import-removal pass
 // (meat/imports.go). A pure classifier: decides which physical lines are
 // import declarations (or their scaffolding) and must be hidden from every

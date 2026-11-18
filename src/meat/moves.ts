@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // moves.ts — exact, source-evidenced detection of code relocated between two
 // different hunks of the same diff (meat/moves.go). A move is real only
 // when both sides are byte-identical modulo a constant per-row indentation

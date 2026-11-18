@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // main.ts (cmd/meat/main.go): the only orchestrator in the CLI package. It
 // parses flags, resolves *which* diff to read (`readDiff`), decides
 // interactivity, and wires together three externally-defined subsystems it

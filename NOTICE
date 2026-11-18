@@ -1,0 +1,19 @@
+columbo-review
+Copyright 2026 the columbo-review authors
+
+This product includes software derived from meat
+(https://github.com/boldsoftware/meat), Copyright 2026 Bold Software, Inc.,
+licensed under the Apache License, Version 2.0. A copy of that license is in
+LICENSE.
+
+The TypeScript engine under src/meat/ and the ported CLI modules (src/cli/main.ts,
+cache.ts, render.ts, stdin.ts) were ported from the upstream Go implementation
+and then modified and extended: the product and commands were renamed to
+columbo, workflow subcommands (prime, status, snapshot, record, setup,
+capabilities, guide), local Git-backed state records, project skill
+installation, and additional platform support were added. The upstream Go
+sources remain under meat/ and cmd/ as a reference implementation.
+
+columbo-review is an independent project. It is not affiliated with, sponsored
+by, or endorsed by Bold Software, Inc. "meat" is used only to describe
+compatibility with the upstream format.

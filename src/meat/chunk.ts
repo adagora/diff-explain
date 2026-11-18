@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // chunk.ts splits an oversized unified diff into independently abridgeable
 // chunks (meat/chunk.go). A single agent run re-sends the whole numbered
 // diff every turn, so its size is bounded by a per-run byte budget. A larger

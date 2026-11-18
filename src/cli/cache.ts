@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // cache.ts (cmd/meat/cache.go): the `~/.meat` result cache — resolve a
 // directory, derive a key, and get/put one JSON blob under that key. Exactly
 // four functions, matching Go's file scope exactly: the `run` orchestration

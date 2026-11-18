@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // Model resolution and backend dispatch (specs/providers.md G1-G2), plus
 // `NewModelFromEnv` (G17 — routes through either provider constructor,
 // deferred here from item 4b since both `anthropic.ts`/`openai.ts` needed

@@ -301,3 +301,15 @@ knowledge. [The roadmap](docs/roadmap.md) owns proposed work.
 Git attributes preserve the raw bytes of conformance fixtures and corpus diffs
 across checkouts, including Windows with `core.autocrlf=true`.
 `TODO.md` and `migration/` retain historical porting context.
+
+## License and attribution
+
+columbo-review is licensed under the Apache License, Version 2.0; see
+[LICENSE](LICENSE). The Go implementation this project was ported from is meat
+by Bold Software, Inc. ([boldsoftware/meat](https://github.com/boldsoftware/meat)),
+also Apache-2.0. The TypeScript engine and ported CLI modules carry a derivation
+notice, and [NOTICE](NOTICE) records the upstream copyright and the changes made
+here. The `meat` command, wire kinds and cache variables exist for compatibility;
+this project is independent and is not affiliated with or endorsed by Bold
+Software. Apache-2.0 does not grant trademark rights, so do not present columbo
+as the upstream meat product.

@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // rubric.ts holds the system prompt and the complete, enumerable, hashable
 // model-visible surface (meat/rubric.go).
 //

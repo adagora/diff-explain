@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // diff.ts parses unified diffs into an immutable line-oriented layout
 // (meat/diff.go). **Foundation** — everything downstream (editplan, chunk,
 // imports, moves, python, elision) reads this layout and never re-parses.

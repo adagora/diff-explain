@@ -2,9 +2,15 @@
   "name": "columbo-review",
   "version": "0.1.0",
   "description": "columbo: a local workflow for understanding code, making changes, and reviewing with evidence across AI agents.",
+  "license": "Apache-2.0",
   "type": "module",
-  "engines": { "node": ">=22.18.0" },
-  "bin": { "columbo": "./dist/cli/main.js", "meat": "./dist/cli/main.js" },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "bin": {
+    "columbo": "./dist/cli/main.js",
+    "meat": "./dist/cli/main.js"
+  },
   "files": [
     "dist",
     "scripts",
@@ -16,7 +22,8 @@
     ".claude/skills/columbo",
     ".claude/skills/meat",
     ".claude/skills/show-me",
-    "docs"
+    "docs",
+    "NOTICE"
   ],
   "scripts": {
     "setup": "npm run build && npm link && node scripts/install-meat-skill.ts all && node dist/cli/main.js -doctor",
@@ -37,5 +44,8 @@
     "check": "tsc --noEmit && node --test"
   },
   "dependencies": {},
-  "devDependencies": { "typescript": "^5.5", "@types/node": "^20" }
+  "devDependencies": {
+    "typescript": "^5.5",
+    "@types/node": "^20"
+  }
 }

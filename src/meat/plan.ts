@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // plan.ts — the plan-compilation vocabulary shared by moves.ts, imports.ts,
 // python.ts, and editplan.ts. Extracted from editplan.go's type-definition
 // layer (meat/editplan.go:20-122); this file has no single corresponding Go

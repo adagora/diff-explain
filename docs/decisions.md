@@ -361,3 +361,13 @@ migration or conflict merger. Evidence: `src/cli/state.ts`,
 `test/cli/state.test.ts`, `docs/cli-reference.md`. Revisit automatic retention
 and richer execution receipts only with explicit provenance and invalidation
 contracts.
+
+## Apache-2.0 derivation is recorded, not re-licensed
+
+columbo-review is an independent Apache-2.0 derivative of meat by Bold Software,
+Inc. `LICENSE` carries the upstream Apache-2.0 text, `NOTICE` records the
+upstream copyright, the TypeScript port, and the modifications made here, and
+ported `src/meat/` and `src/cli/` modules start with a derivation header. The
+`meat` command, wire kinds, `MEAT_*` variables and `~/.meat` cache are
+compatibility surfaces, not a claim of affiliation or trademark use. Evidence:
+`LICENSE`, `NOTICE`, `package.json`, `README.md`.

@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // python.ts — Python-aware plan validators layered on top of the
 // language-agnostic structural rules (meat/python.go). Conservative,
 // text-level: recognizes fixed syntactic signatures rather than parsing

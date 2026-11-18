@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // render.ts (cmd/meat/render.go): turns a compiled `Result` into what the
 // user sees — colorized/plain terminal output (`renderResult`) or the
 // `-json` wire form (`renderJSON`). Decoding `Result.smartDiff` from bytes

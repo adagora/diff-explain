@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // meat.ts is the package's one entry point (meat/meat.go): `Abridge` drives
 // a bounded loop of model round-trips (a "run"), dispatching tool calls,
 // until the model submits a plan or the run's turn/time budget is

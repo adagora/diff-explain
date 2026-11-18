@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // tools.ts is the agent's toolbox (meat/tools.go): read_file, grep (via `git
 // grep`), preview_plan, submit — confined to a repo root and bounded at a
 // fixed per-result byte cap. Fully self-contained: confirmed by grepping

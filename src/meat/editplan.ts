@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // editplan.ts — compiles a model-submitted edit plan against the immutable
 // original diff (meat/editplan.go). The model never authors output text: it
 // submits remove/replace/fold operations in original line coordinates, and

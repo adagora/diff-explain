@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // exe.dev managed-gateway discovery — both provider constructors' last-resort
 // credential fallback when no explicit API key/base URL is configured
 // (specs/providers.md "exe.dev managed gateway discovery"). Every failure

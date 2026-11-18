@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // Byte-slice primitives for the engine (H1: `diff`, `chunk`, `editplan`,
 // `imports`, `moves`, and `python` operate on `Uint8Array`, never `string`,
 // so every offset/range/budget is a true UTF-8 byte offset by construction).

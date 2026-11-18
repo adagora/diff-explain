@@ -1,3 +1,5 @@
+// Ported from boldsoftware/meat (Apache-2.0, Copyright 2026 Bold Software, Inc.).
+// See LICENSE and NOTICE. Modified and extended for columbo-review.
 // anthropic.ts is meat/anthropic.go: AnthropicModel, a built-in Model backed
 // by the Anthropic Messages API, using only Node's built-in fetch so meat.dev
 // has no third-party dependency. Also delivers postJSONWithRetry, the retry
