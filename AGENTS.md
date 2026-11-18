@@ -49,7 +49,7 @@ Prime prints instructions for the current agent; it is not a scheduler or hook.
 | Read-only model tools | `src/meat/tools.ts` |
 | Byte handling, parsing | `src/meat/bytes.ts`, `src/meat/diff.ts` |
 | Behavior contracts | [Current contract index](specs/INDEX.md), then the owning subject spec |
-| Frozen Go parity | `test/conformance.test.ts`, `conformance/vectors/` |
+| Frozen conformance vectors | `test/conformance.test.ts`, `conformance/vectors/` |
 
 ## Preserve these boundaries
 
@@ -63,8 +63,8 @@ Prime prints instructions for the current agent; it is not a scheduler or hook.
 - Provider tests use fake credentials and mock servers. Ordinary checks should
   not call live models. Never print `.env` or copy credentials into artifacts.
 - Keep stdout parseable for `-json` and `-prompt`; diagnostics go to stderr.
-- Go under `meat/` and `cmd/` is the migration reference. Change it only when
-  the task concerns Go or parity. TypeScript-only features are valid.
+- The upstream Go sources were removed. `conformance/vectors/` is the frozen
+  oracle; do not claim parity or behavior the vectors and tests do not cover.
 - `.claude/skills/meat/SKILL.md` is canonical; synchronize the tracked
   Codex/Grok discovery copies with `npm run skill:sync` after editing it.
 - The meat skill defaults explanations to `-prompt` in the current agent
@@ -86,6 +86,13 @@ Prime prints instructions for the current agent; it is not a scheduler or hook.
   verification; keep `verified_by_columbo:false` honest and never rewrite a hash
   to make stale evidence look fresh.
 - Prime guidance is packaged text, not a hook, model call, or scheduler.
+
+## Code style
+
+- Do not comment code: no inline, block, or doc comments. Put explanations in
+  `docs/` or the owning spec instead. License/derivation headers are the only
+  exception. Existing comments are legacy; leave them unless the task rewrites
+  that code.
 
 ## Leave useful knowledge
 

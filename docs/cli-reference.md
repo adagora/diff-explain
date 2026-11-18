@@ -2,7 +2,8 @@
 
 Turn a large code diff into a smaller **reading diff** focused on consequential
 changes. This is a local CLI, with no web server to start. TypeScript in `src/`
-is the active implementation; the Go tree is the migration reference.
+is the active implementation. The upstream Go tree was removed; frozen
+conformance vectors preserve its verified baseline.
 
 For the Understand / Work / Review workflow, see [columbo Prime](../prime/README.md).
 The `meat` command and Meat skill remain compatible. Examples use the direct
@@ -14,7 +15,6 @@ remains `~/.meat`.
 
 Requires Git and Node **22.18+**; Node 24 is recommended (`nvm use` if you use
 nvm). The source CLI and tests use Node's built-in TypeScript support.
-Go is not needed for normal use.
 
 ```sh
 npm ci

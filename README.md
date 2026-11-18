@@ -6,7 +6,8 @@ the agent session you already use.**
 columbo turns a large or repetitive git diff into a smaller **reading diff**, and
 carries explicit intent, evidence and decisions between sessions. It runs locally:
 no server, no hooks, no background agent. TypeScript in `src/` is the active
-implementation; the Go tree is the migration reference.
+implementation. The upstream Go tree was removed; frozen conformance vectors
+preserve its verified baseline.
 
 For the architecture, document authority and proposed improvements, start with
 [system design](docs/system-design.md) and the [current roadmap](docs/roadmap.md).
@@ -22,7 +23,7 @@ kinds are unchanged.
 
 Requires Git and Node **22.18+**; Node 24 is recommended (`nvm use` if you use
 nvm). The source CLI and tests use Node's built-in TypeScript support.
-Go is not needed for normal use. columbo runs on Linux, macOS and Windows; the
+columbo runs on Linux, macOS and Windows; the
 test suite is checked on Linux and Windows. Set up once from this checkout:
 
 ```sh

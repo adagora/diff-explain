@@ -33,7 +33,7 @@ where uncertainty could change the review.
 |---|---|---|
 | What can I run now? | [README](../README.md), [workflow](agent-workflow.md) | Current usage |
 | What code owns this behavior? | [AGENTS](../AGENTS.md), [spec index](../specs/INDEX.md) | Navigation and invariants |
-| What is implemented and constrained? | [Subject specs](../specs/README.md), linked source and tests | Current contracts; Go sections identify the frozen baseline |
+| What is implemented and constrained? | [Subject specs](../specs/README.md), linked source and tests | Current contracts; historical sections preserve the frozen baseline |
 | How should the whole system fit together? | This document | Design direction |
 | What will future agent-facing operations promise? | [Agent interface](../specs/agent-interface.md) | Target contracts; P1 adoption mapped to current observe spec, remainder proposed |
 | What should be built next and how will we know it works? | [Roadmap](roadmap.md) | Dependency order and acceptance gates |

@@ -26,7 +26,8 @@ System relationships and documentation authority are maintained in
 
 ## Historical Go specification coverage
 
-The progress ledger for stages 1 and 2. Each stage's exit gate is this table
+The Go sources have been removed; these tables are provenance for the frozen
+conformance vectors, not live paths. The progress ledger for stages 1 and 2. Each stage's exit gate is this table
 fully ticked in its column.
 
 **Stage 1** fills the Guarantees section of each spec, from tests.
