@@ -1,185 +1,251 @@
-# columbo with Codex, Claude Code, or another agent
+# Understand, work, review and hand off with an agent
 
-## Start with Prime
+This is the workflow for the **current CLI**, including Prime guidance and local
+records in [cli](../specs/cli.md) and P1 offline observation in
+[observe](../specs/observe.md). Snapshot-bound context tools, receipts and
+resume remain proposed in [system design](system-design.md) and the
+[roadmap](roadmap.md). Usage and installation details remain in
+[README](../README.md).
 
-Use `columbo prime` to load the local bootstrap, or `columbo prime understand`,
-`columbo prime work`, and `columbo prime review` for a selected activity. Append
-`--json` to read `data.instructions` in the versioned envelope. In this checkout
-replace `columbo` with `node src/cli/main.ts`; from another repository use the
-absolute built CLI path. Loading guidance makes no model call and does not run
-checks, edit the target, or install hooks.
+## 1. Establish outcome, source and evidence
 
-Use `columbo prime audit` for repository-wide investigation. It guides the agent
-through an architecture map, important execution paths, findings and a coverage
-record. Implementation and fixing findings both use Work, with no default round
-cap. `columbo prime converge` remains a compatibility entry that loads Work.
-Review, Audit and Converge load the shared
-review policy. None of these commands scans code or executes a loop by itself.
-`columbo packet HEAD` and API abridging still consume selected diffs; they do not
-upload a whole repository as a new analysis mode.
+Choose the requested result before choosing a backend. Available credentials
+alone do not determine intent.
+
+| Requested outcome | Current operation | What it establishes |
+|---|---|---|
+| Identify exact scope and inspect bounded evidence | `-inventory`, then `-evidence id -snapshot sha256` | Snapshot identity, original ranges and selected raw bytes |
+| Forecast API partitioning locally | `-plan` | Deterministic partitions and limitations; no dispatch |
+| Discover local operations and bounds | `-capabilities` | Versioned supported/unsupported contract; no source or auth probe |
+| Check which workflows this machine can run | `-doctor` | Human-readable readiness: PATH, skills, subscription login, API key names; no model call |
+| Inspect shape and original diff | `-look` | Local counts/shape and full input |
+| Explain within the open agent session | `-prompt`, then read it | Full input packet; agent supplies interpretation |
+| Run a fresh subscription review | `-agent codex` or `-agent claude` | External CLI explanation |
+| Produce a compiled reading diff | API abridging, optionally `-json` | Validated source-derived elisions and specified compiler invariants |
+| Load workflow guidance for the current agent | `prime [understand\|work\|review\|audit\|converge]`, optionally `--json` | Packaged activity instructions; no model call, scan, edit or hook |
+| Preserve intent, evidence and decisions between sessions | `snapshot`, `record`, then `status` | Immutable attributed local records with freshness checks; not verification |
+| Install project-local skills | `setup`, then `--yes` | Preview or copy skills for Codex/Claude with absolute CLI launch paths |
+
+### Load the workflow before acting
+
+`columbo prime` prints the local bootstrap; `columbo prime understand`, `work`,
+`review`, `audit` and `converge` print the selected activity. Append `--json` to
+read `data.instructions` from the versioned envelope. Prime is packaged text: it
+makes no model call and does not run checks, edit the target, install hooks or
+schedule later work. Review, Audit and Converge load the shared review policy;
+Audit adds a repository-wide architecture map and coverage record, while
+implementation and fix loops use Work with no default round cap.
 
 Ask the current agent: “Use columbo to implement this request, then review the
-consequential changes before finishing.” The Work activity includes that review
-checkpoint. Small edits use direct diff inspection; compiled reading views are
-optional when they help. Source evidence, actual checks, and material uncertainty
-are the deliverable. API calls and additional agent sessions remain explicit.
+consequential changes before finishing.” Source evidence, actual checks and
+material uncertainty are the deliverable; API calls and additional agent
+sessions remain explicit.
 
-The canonical columbo skill is `.claude/skills/columbo/SKILL.md`, linked into
-Codex/Grok discovery roots. The Meat skill and command remain compatible.
-The npm package ships skills and workflow documents but does not install them
-into other projects' host discovery directories automatically. Run `columbo setup
---project /path/to/project --agent both` for a preview, then add `--yes` to install
-the skills for Codex and Claude Code. Setup uses copies and absolute CLI launch
-paths, preserves existing content, and makes no model call. The repository
-folder may still be named meat; paths below refer to this existing checkout.
-
-## Status and next-session prompts
-
-Ask “Where are we? What needs my attention?” for verified progress, remaining
-work, blockers and decisions. This does not stop the implementation task.
-
-Ask for a next-session prompt when a handoff is useful. The agent returns one
-copyable prompt with repository and snapshot, goal and constraints, changed files,
-actual checks, findings, decisions, outstanding ideas and the next action. Agreed
-work, proposals and deferred ideas remain distinct. The next session reads the
-complete project rules and README and verifies the current state before relying
-on earlier evidence. No separate handoff file or goal is created automatically.
-
-## Portable compiled output (current agent or any model)
-
-Run `columbo capabilities --json` for the live contract, or `columbo guide` for a
-copyable workflow. In this checkout, replace `columbo` with
-`node src/cli/main.ts`; from another repository, use the absolute built CLI path.
+For work that must survive a restart, write the intent first, then record what
+the agent actually inspected and ran:
 
 ```sh
-columbo packet main...HEAD > packet.json
-# Read data.instructions and numbered_diff. Write plan.json using plan_schema.
-columbo compile --packet packet.json --plan plan.json > result.json
+columbo snapshot --file src/importer.ts --file test/importer.test.ts --json
+columbo record --file intent.json
+columbo status --json
+columbo status --task <id> --details --json
 ```
 
-An agent can do all three steps inside its current session. No provider API is
-called by packet or compile. For an automatic API-key model/tool loop, use
-`columbo abridge -json -model MODEL main...HEAD`; it retains the existing API JSON
-format. Provider credentials stay with the selected access path.
+Records live under Git metadata in `columbo-state-v1`, are immutable, and report
+`needs_recheck` when supporting bytes change; stale hashes are never rewritten.
+They are attributed claims, never verification, test receipts or permission to
+act. `columbo setup` previews project-local skills and `--yes` installs them
+without overwriting existing files. In this checkout the canonical workflow skill
+is `.claude/skills/columbo/SKILL.md`; the Meat skill and command remain
+compatible.
 
-The JSON packet is a saved diff snapshot, not a request to reread mutable HEAD.
-Compilation works without the checkout and refuses mismatched hashes, changed
-numbering, incompatible compiler identity, or invalid plans. Repair only the
-plan on validation errors. Generate a new packet and plan when the diff changes.
-`packet` defaults to HEAD; pipes require `--stdin`. New command options can follow
-the revision; legacy flags must precede it.
+Use explicit `HEAD` for the latest commit, a named range for branch changes,
+`-staged` for the index, or `-w` for unstaged tracked changes. Flags go before
+the revision. Staged/worktree selectors cannot combine with a revision.
+Untracked files are excluded. Empty input is an error, not a finished review.
 
-The resulting reading diff is compiler-validated, but omissions are still
-model-selected. It is not evidence of semantic completeness, test execution,
-or full review coverage. Imports are always removed. Preserve the original diff
-and record surrounding source and actual verification separately in handoffs.
-The offline bridge caps raw UTF-8 diffs at 400 KiB; narrow the scope or explicitly
-use the API engine's chunking. File/stream JSON artifacts are capped at 16 MiB.
+Run from the repository being reviewed. In this checkout the source entry is
+`node src/cli/main.ts`; elsewhere use an absolute path to this checkout's source or
+built entry, or `columbo` after `npm run setup` linked it. Avoid rebuilding when a
+working launch line already exists. To save output, use `-o file` rather than
+shell redirection: it writes stdout's exact bytes and only after success.
 
-## Direct terminal review (subscription CLI)
+For observation, record the snapshot ID, input digest and source descriptor.
+Commit/range endpoints are resolved once, including the actual three-dot merge
+base. Equivalent selector spellings and checkout locations do not change
+snapshot identity. Staged/worktree snapshots retain captured diff bytes with
+unavailable context and unverified consistency; they do not imply an atomic
+repository instant. Stdin remains unbound to any repository. For legacy packet
+reviews, resolve and record endpoints separately; the packet digest identifies
+only captured diff bytes. Preserve evidence when a handoff needs it and
+regenerate after edits.
 
-`npm run review -- HEAD` now runs a fresh signed-in Codex process and prints its
-answer. `npm run review:claude -- HEAD` uses Claude Code. From any repository,
-use `node /path/to/meat/dist/cli/main.js -agent codex HEAD` (or `claude`).
-Sign in first with `codex login` / `claude auth login`. columbo verifies subscription
-auth, removes API environment overrides, includes the installed show-me skill,
-and fails rather than switching to an API account. It forwards child output to
-the terminal; Ctrl-C requests termination. A CLI failure exits 1.
+Current engine tools read the live checkout. When historical/index context
+matters, inspect the appropriate Git tree/blob explicitly and label the source
+of additional evidence. Piped input may describe a different repository.
+Do not infer correspondence from the shell's current directory.
 
-These are fresh sessions using the CLI login, not continuations of an open
-conversation. The packet workflow below remains useful inside an existing
-session and for Grok. Do not recursively invoke `-agent` from a columbo review.
+## 2. Use the smallest sufficient workflow
 
-Start with one agent implementing a change. Use a fresh session for independent
-review when useful. Give it the actual source/range and test evidence, not just
-an implementation summary.
-
-## Subscription-first handoff
-
-In this checkout, the shared meat skill defaults explanation requests to the
-subscription workflow. Tell your signed-in agent:
-
-> Use meat and show-me to explain HEAD using my current session.
-
-For unstaged tracked edits, substitute “my unstaged changes” for `HEAD`; for a
-PR/MR, provide its actual range, such as `origin/main...HEAD`. The agent runs
-`-prompt` and reads it directly, then applies show-me to explain the evidence.
-There is no background process to turn on and no separate model login in columbo.
-
-Codex: mention `$meat` and `$show-me`, or use the sentence above. Claude Code:
-invoke `/meat` with the request, or use the same sentence. New Codex skills are
-available on the next turn; start a new Claude Code session if discovery is
-stale. Grok clients with project skill support can use the same files; Grok
-web chat still needs the packet pasted or attached.
-
-Manual export from this checkout:
+For a large input, start with a bounded inventory:
 
 ```sh
-npm run --silent packet -- HEAD > /tmp/meat-review.md
+node src/cli/main.ts -inventory -page-size 20 HEAD
+node src/cli/main.ts -evidence h:123 -snapshot <snapshot-sha256> -max-bytes 8192 HEAD
+node src/cli/main.ts -plan HEAD
 ```
 
-From the repository being reviewed (substitute your meat checkout path):
+Replace the example entry and snapshot with values from the parent inventory.
+Follow `page.next` with `-cursor`, preserving source, operation, selection and
+limit. Evidence is base64; concatenate decoded byte pages before text decoding,
+since a page may split a UTF-8 character or line. Ranges describe original diff
+bytes/lines with exclusive ends, separately from hunk old/new source positions.
+The selected coverage does not establish parent review. Inspect exact-move
+relationship entries and crossing IDs before treating a subset as independent.
+Changed snapshots fail explicitly; capture a new inventory instead of carrying
+old IDs into edited evidence. Mutable/stdin continuations must resupply the same
+input because collection runs again on each invocation.
+
+`-plan` applies the API partition policy to the captured observation snapshot
+without reading cache metadata or dispatching a model. It does not assert the
+same partitions for legacy execution of a Git selector, whose envelope may
+differ. Read its context and coverage limits: execution still uses
+live-checkout tools; model calls, tokens and cost are unknown. `-capabilities`
+reports local supported controls without probing source, authentication or
+remote services. These JSON operations are separate from full packet workflows.
+
+For an explanation in this session, invoke `/meat HEAD` in Claude Code or
+`$meat explain HEAD` in Codex. Natural language also works: “Use meat to explain
+my staged changes.” To make the skill available in other repositories, run
+`npm run skill:install -- all` from the meat checkout and open a new CLI session.
+Choose `codex` or `claude` for a single host. The personal skill records the
+absolute source entry and reads the canonical instructions on each use. Keep
+the shell in the repository being reviewed; rerun the installer if the checkout
+moves or its discovery metadata changes.
+
+The canonical [meat skill](../.claude/skills/meat/SKILL.md) runs `-prompt` and
+reads its output in the current session. When a visual helps, it adds the
+smallest plain-text or Mermaid sketch. Packet creation needs no API key and launches no model. The skill
+installer supports Codex and Claude Code; Grok discovery remains client-dependent.
+No plugin package is required or shipped. The skill does not change the default
+API behavior of a direct `meat HEAD` invocation.
+
+Manual packet generation in this checkout:
 
 ```sh
-node /path/to/meat/dist/cli/main.js -prompt -w > /tmp/meat-review.md
+node src/cli/main.ts -prompt HEAD
 ```
 
-Ask your current agent:
+Save output to a chosen local file only when a handoff or reuse needs it. Use
+direct Node commands for redirection, or `npm run --silent packet -- HEAD`;
+ordinary npm script banners can contaminate an artifact.
 
-> Read /tmp/meat-review.md and relevant surrounding source. Explain the behavior
-> change, show a small flow diagram if it helps, and identify concrete risks with
-> file references. Distinguish tests actually run from suggested checks.
+Both `-look` and `-prompt` emit the full diff. Running look immediately before
+prompt repeats that payload. If a packet already provides enough evidence,
+read it directly. Expand context only for questions that could change the
+conclusion: callers, types, tests, configuration, or before/after behavior.
 
-With Grok chat, attach/paste the file; without repository access it can only
-assess supplied evidence. A large packet may exceed the client's context:
-select a narrower range or file groups rather than silently truncating.
-`-prompt` does not reduce diff size or invoke the engine's tools.
+For a large diff, select a meaningful narrower range or explicit path groups
+with Git, keeping a parent file/coverage list. A filtered packet is a subset of
+the review. Account for all groups and inspect relationships crossing them.
+Never silently truncate an oversized packet or claim the parent review is
+complete after inspecting only a subset. Grok chat can use a pasted/attached
+packet, with unavailable repository context stated.
 
-## GitHub and GitLab
-
-Meat reads local Git data and piped diffs. No hosting connector is necessary.
-After fetching relevant refs using your normal workflow, review the same
-merge-base comparison your PR/MR uses; substitute its actual target branch:
+For a fresh terminal review:
 
 ```sh
-node /path/to/meat/dist/cli/main.js -prompt origin/main...HEAD > /tmp/meat-review.md
+npm run review -- HEAD
+npm run review:claude -- HEAD
 ```
 
-For pipelines, use target and source SHAs supplied by your hosting system.
-Ensure both commits and their merge base are present in shallow checkouts.
-Generate the packet as an artifact for a human or authorized agent to read.
-Posting comments, approving, and merging remain separate host operations.
-Meat does not change GitHub/GitLab credentials or remote settings.
+These start separate signed-in Codex/Claude processes. columbo checks subscription
+auth, removes API environment overrides, includes its built-in visual
+guidance, and has no API fallback. Login is managed by the external CLI
+(`codex login` / `claude auth login`). Do not recursively launch `-agent`
+inside a columbo review; use its supplied packet. CLI failure exits 1. Ctrl-C
+requests child termination. The current child review has no execution deadline.
 
-## Installed show-me integration
+For compiled output, invoke API abridging as described in README and preserve
+the CLI result. The CLI resolves model/provider, cache and access: cache hits
+need no provider access, and configured endpoints or supported gateways can
+work without keys. If the CLI reports a missing prerequisite, retain the
+requested compiled-output intent and report that diagnostic; a packet is a
+different artifact. The skill must not recreate compiler rules. The engine has per-chunk limits,
+but the CLI exposes no aggregate time/token/call cap.
 
-The [upstream skill](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md)
-guides visual explanations. It is useful alongside the packet, especially for
-architecture and before/after flow. Its upstream skill is installed unchanged
-in `.claude/skills/show-me/SKILL.md`; `.agents/skills/show-me/SKILL.md` and
-`.grok/skills/show-me/SKILL.md` link to it. The meat skill explicitly routes
-visual explanations to this sibling skill. This is an agent integration, not
-a new API backend. Plain chat can follow the packet's diagram guidance without
-skill discovery. The same visual skill can also explain a compiled API result
-when API abridging was explicitly requested.
+## 3. Assess what the result supports
 
-## Useful handoff evidence
+Start with the behavior change and cite concrete evidence. Distinguish observed
+changes, inferred intent, and unresolved questions. A useful visual preserves
+those distinctions and links to the same evidence as the prose.
 
-Include the review scope (base/head SHAs or staged/worktree), intended behavior,
-affected paths, commands actually run and their outcomes, and open decisions.
-The packet hash identifies its input snapshot; regenerate after edits. Keep
-durable decisions in `docs/decisions.md` and contracts in `specs/`, rather than
-growing competing sets of project instructions.
+| Evidence | Supported conclusion | Limit |
+|---|---|---|
+| Observation snapshot ID | Exact diff plus resolved source and collection/context policy | Mutable context unavailable; no bound execution tools or durable object retention |
+| Inventory/evidence page | Ordered entries or exact selected original bytes | Complete delivery does not establish complete parent review |
+| Local execution plan | Existing API partition forecast and omission counts | No execution, enforceable aggregate budget, semantic validation or known call/token/cost total |
+| Packet digest | Input byte identity | No identity for surrounding checkout context |
+| Successful edit-plan compilation | Source-derived output under implemented rules | No proof of semantic completeness, summary accuracy, or passing tests |
+| Reading diff | Selected changes to read | Imports and other content may be omitted; it is not an applicable patch |
+| Chunked compiled result | Per-chunk checks and merged output | Cross-chunk move symmetry is not globally validated |
+| Existing API JSON | Diff, summary, returned usage, optional elision | No fallback/coverage/provenance envelope |
+| Cache hit | A stored result matched the existing key | Context/routing are absent from that key; tokens describe historic work |
+| External-agent answer | An explanation of supplied/inspected evidence | Meat has not compiled or independently validated its reasoning |
 
+Use the original diff to resolve a consequential omission. Report checks
+actually performed with command, scope and result; proposed checks remain
+proposals. Compiler success and rubric assumptions never establish test success.
+If source changed, identify which findings need revalidation.
 
-## Resume from explicit local evidence
+For a changed context or provider route, `-no-cache` recomputes API output and
+still stores it. `MEAT_CACHE=""` disables cache reads and writes. A cached result
+alone cannot verify today's source.
 
-When the user wants durable task state, record intent and evidence using
-`columbo record --file RECORD.json` (contract: `columbo help record-schema`). Read
-`columbo status --json` or `columbo status --task ID` on resumption. Status does not
-create a task or grant permission to resume work; use the current user request.
-Inspect `needs_recheck` evidence before relying on it. Unchanged supporting files
-only establish matching bytes, and reported checks remain assertions. Record
-omissions in `limits`. Decision answers record attributed judgment, not host
-approval. Competing successors require reconciliation rather than last-writer-wins.
-See the CLI reference for complete JSON examples and local storage boundaries.
+## 4. Leave a compact, resumable handoff
+
+Include only information another session needs to continue:
+
+- **Intent and scope:** requested outcome, repository, resolved endpoints or
+  mutable source, filters and excluded categories.
+- **Evidence:** observation snapshot/selection IDs or packet/raw input location
+  and digest; context paths plus
+  revision or live-checkout identity; regenerate when those change.
+- **Findings:** supported behavior/risk with references; inference labelled.
+- **Coverage and limits:** inspected paths/partitions, remaining groups,
+  unavailable context, compiler/agent provenance.
+- **Verification:** commands actually run, input revision and outcomes.
+- **Next action:** the smallest operation that would resolve the remaining
+  material question, with any prerequisite or budget limitation.
+
+A new session first verifies the handoff's evidence identity, then continues
+from its remaining question. Reuse valid artifacts; stale ones are historical
+evidence. Current meat has no structured checkpoint/resume interface, so this
+handoff is an agent practice.
+
+## 5. Promote durable knowledge
+
+Use [decisions](decisions.md) for a stable choice or reproducible gotcha:
+decision, reason, evidence, scope and when to revisit. Put behavior contracts
+in the relevant spec and planned changes in the roadmap. When a behavior fix
+needs regression coverage, retain a minimal deterministic reproduction.
+
+Verify a finding before promoting it. Update an obsolete entry in place or
+mark it superseded with a link; avoid accumulating contradictory instructions.
+Revisit entries when their owning code, protocol or assumptions change.
+Keep transient run details in the handoff, and keep startup instructions focused
+on navigation and invariants.
+
+## Hosting and visual integration
+
+GitHub/GitLab reviews use local Git data after fetching the relevant refs through
+the normal workflow. Review the actual target/source comparison, such as
+`origin/main...HEAD`; pipelines should use supplied SHAs and ensure the
+merge base is available in shallow checkouts. Posting, approving and merging
+are separate authorized host operations.
+
+Visual guidance is built into the meat skill and the `-agent` prompt and uses
+portable text forms: pseudocode, call trees, code sketches and Mermaid.
+Codex/Claude/Grok discovery copies and plain packet handoffs select the same
+evidence workflow. Visuals inherit the explanation's
+evidential limits.

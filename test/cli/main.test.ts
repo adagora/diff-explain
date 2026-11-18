@@ -203,7 +203,7 @@ test("readDiff on a merge commit: first-parent diff, not the empty plain-'git sh
   const probePath = join(dir, "probe.mjs");
   writeFileSync(
     probePath,
-    `import { readDiff } from ${JSON.stringify(mainModulePath)};\n` +
+    `import { readDiff } from ${JSON.stringify(new URL("../../src/cli/main.ts", import.meta.url).href)};\n` +
       `const { diff, source } = await readDiff([], false, false);\n` +
       `process.stdout.write(JSON.stringify({ diff: Buffer.from(diff).toString("base64"), source }));\n`,
   );

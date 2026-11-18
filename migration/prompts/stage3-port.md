@@ -1,5 +1,9 @@
 # Stage 3 loop — port to TypeScript, one thing per iteration
 
+> Archived migration prompt. Run only when the current task explicitly asks
+> to revisit this historical stage. Present development starts with
+> [AGENTS](../../AGENTS.md) and the [current roadmap](../../docs/roadmap.md).
+
 Run this prompt repeatedly until the exit gate is met.
 
 **Do not start until stage 2's exit gate is met and stage 0's vectors are

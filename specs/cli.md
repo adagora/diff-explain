@@ -2,6 +2,118 @@
 
 ## TypeScript additions (current behavior)
 
+The opt-in `-inventory`, `-evidence id`, `-plan` and `-capabilities` operations
+use the `meat.observe` version 1 JSON family. Their collection, bounds,
+coordinates, snapshot identity and diagnostics are owned by
+[offline observation](observe.md), with source in
+[snapshot.ts](../src/cli/snapshot.ts) and [observe.ts](../src/cli/observe.ts).
+Evidence requires its parent's `-snapshot` SHA-256. These operations reject
+legacy output/agent/model/cache flags and return before provider/cache work.
+Runtime observation diagnostics are JSON on stderr with exit 1; parsing retains
+exit 2. Their pure tree-diff collection is separate from legacy `readDiff`.
+
+`-agent codex|claude` launches a fresh subscription CLI review using the same
+diff sources. It checks login before launch, sends the packet and built-in
+visual guidance via stdin, and forwards output. It never enters the meat
+provider/cache/compiler path. It rejects combinations with `-prompt`, `-look`,
+`-json`, `-model`, or `-no-cache`. Missing CLI, unconfirmed login, or child
+failure exits 1 with no API fallback; unknown/empty agent names exit 2.
+See `src/cli/agent.ts` and `test/cli/agent.test.ts` for auth/environment contracts.
+Credential/routing-name filtering is case-insensitive, including Windows
+environment spellings. Recursive requests fail before probing CLI/login.
+On Windows, executable resolution includes PATH/PATHEXT and launches npm
+`.cmd`/`.bat` shims through `cmd.exe`, preserving empty and quoted CLI arguments.
+The same resolution is used for login probes and review execution.
+Both legacy and observation Git collection use an explicit 64 MiB stdout cap,
+independent of engine limits. [Skill contract cases](../test/cli/skill-contract.test.ts)
+cover complete Git packets over 1 MiB and exact cached compiler output with no
+provider access.
+
+### First-run usability
+
+These TypeScript additions make the workflows reachable without reading the
+docs first. They differ from the Go baseline below where stated.
+
+- **Help** opens with `Usage: meat [flags] [change]`, then the workflows needing
+  no API key, then how to choose a change, then the Go abridge wording.
+- **Flag errors** still exit 2, but print `meat: <error>`, an optional hint for
+  a workflow word (`-explain` → `-prompt`), and `Run "meat -h" …` instead of the
+  whole usage text (the Go baseline dumped it, `:97-103`).
+- **Source hints:** when `readDiff` fails, its Go message and exit 1 are kept and
+  one `hint:` line is added if a flag followed the revision (`meat HEAD -look`
+  → `meat -look HEAD`) or the first positional is a workflow word
+  (`meat look HEAD`, `meat doctor`). Hints appear only on failure, so a branch
+  named like a workflow word still resolves normally.
+- **Missing provider credentials:** the provider's message and exit 1 are kept;
+  `hint:` lines then list `-prompt`, `-agent codex`, `-look` and `-doctor` for
+  the same selection, and mention an unread `.env` in the working directory
+  (by existence only, never content).
+- **A closed stdout pipe** (`meat -look HEAD | head`) exits 0 quietly, as git
+  does, instead of crashing with an unhandled `EPIPE` stack trace. This applied
+  on both Linux and Windows.
+- **`git()` stderr** is captured (`stdio: ignore/pipe/pipe`), matching Go's
+  `.Output()`. Git's message appears once, inside meat's error, and
+  success-path warnings such as CRLF notices are no longer echoed.
+- **`-o file`** applies to every stdout result (`-prompt`, `-look`, `-json`,
+  the abridged diff, observation JSON, `-agent`). Output is collected, written
+  to `file.meat-<pid>.tmp` and renamed into place only after success, so a
+  failed run leaves no file. The bytes equal what stdout would carry, with no
+  shell re-encoding (Windows PowerShell 5.1's `>` adds a BOM and CRLF). The
+  destination is never a terminal, so output is plain and unpaged; API
+  progress shows when stderr is a terminal. A `meat: wrote <file> (<n> bytes)`
+  notice goes to stderr.
+- **`-agent`** pipes the child's stdout through to meat's output and captures
+  its stderr log (session header, echoed packet). On success the log is
+  dropped; on failure the last 64 KiB precede the error. `-verbose` (only
+  valid with `-agent`) forwards the log live instead. On a terminal, meat
+  shows elapsed time until the first review output.
+- **`-doctor`** ([doctor.ts](../src/cli/doctor.ts)) takes no source or other flag
+  and exits 0. It reports Node/Git versions, the repository, whether `meat` is
+  on PATH, personal skill launchers bound to this checkout, Codex/Claude
+  subscription login (the same local status probe as `-agent`, with API
+  variables removed), and API readiness for the resolved model. It prints
+  credential variable names, never values, and probes no model, provider or
+  gateway. `npm run setup` builds, runs `npm link`, installs both skills and
+  runs `-doctor`.
+
+Evidence: [usability cases](../test/cli/usability.test.ts),
+[agent cases](../test/cli/agent.test.ts).
+
+The Go-cited contract below is the migration baseline. The active CLI also has
+`-look` (offline shape/counts/raw diff) and `-prompt` (offline Markdown packet).
+See `src/cli/shape.ts`, `src/cli/prompt.ts`, and their `test/cli/` tests.
+
+`-prompt` accepts the existing stdin/revision/range/staged/worktree sources and
+boolean flag spellings. It emits instructions, source label, input byte length,
+SHA-256, and full UTF-8-decoded diff. It does not truncate, call a provider, use
+the cache, color output, or page. Invalid UTF-8 follows the existing text
+boundary decoder; the hash always covers the original bytes. A trailing newline
+is added before the closing Markdown fence if needed. Fences are longer than
+every backtick run in the input so embedded Markdown stays inside the diff.
+This is review input, not an engine-compiled result or a reduction in diff size.
+
+Combining `-prompt` with `-look` or `-json` is a flag error (exit 2) before reading
+input. Empty input retains exit 1. Model/cache flags have no effect in this mode.
+The packet prompt is separate from the rubric and does not change cache identity.
+
+The standalone [meat skill](../.claude/skills/meat/SKILL.md) defaults explanations
+to this offline packet in the current session. It is a host instruction wrapper,
+not a new CLI mode. [Installation](../scripts/install-meat-skill.ts) writes a
+personal Codex/Claude launcher with canonical discovery metadata, an absolute
+canonical-skill path and an absolute source-entry path. It reads the current
+canonical instructions before selecting commands, preserving the reviewed repository's cwd. It
+depends on the source checkout and its installed dependencies; no engine or
+credentials are copied. Instruction updates need no reinstall; moving the
+checkout or changing discovery metadata does. `skill:sync` updates tracked project Codex/Grok copies.
+It synchronizes the meat skill as regular Markdown copies. Personal
+installation refuses linked leaf directories/files rather than writing through
+them to the canonical source. Compiled skill requests delegate provider/cache
+decisions to the CLI: cache hits require no provider access, and configured
+endpoints/gateways can work without keys. The skill does not reimplement compiler
+rules or relabel an agent explanation as compiled output.
+See [installation cases](../test/skill-install.test.ts) for cross-repository
+offline invocation, and [workflow](../docs/agent-workflow.md) for intent routing.
+
 ### Project skill setup
 
 `setup [--agent codex|claude|both] [--project DIR] [--dry-run|--yes] [--json]`
@@ -176,6 +288,46 @@ This is review input, not an engine-compiled result or a reduction in diff size.
 Combining `-prompt` with `-look` or `-json` is a flag error (exit 2) before reading
 input. Empty input retains exit 1. Model/cache flags have no effect in this mode.
 The packet prompt is separate from the rubric and does not change cache identity.
+
+> Status: stage 1 ✅ | stage 2 ✅
+> Go sources: `cmd/meat/main.go`, `cmd/meat/stdin.go`, `cmd/meat/isatty_*.go`
+> Go tests: `cmd/meat/readdiff_test.go` (7 tests — revision/range resolution,
+> staged/worktree, argument validation), `cmd/meat/install_test.go` (1 test —
+> installed binary name)
+
+## Current observability and limits
+
+These are source-observed limits, not additional protocol guarantees:
+
+- Legacy `readDiff` returns bytes and a source label. The packet has an input digest
+  but no resolved commit/context snapshot. Engine context tools use the current
+  checkout even for a historical, staged or stdin diff.
+- `-look` and `-prompt` both include the full input. Neither is a bounded,
+  structured inventory or a model execution forecast. The separate observation
+  operations provide those local surfaces without changing packet behavior.
+- API JSON contains `smart_diff`, `summary`, `input_tokens`, `output_tokens`,
+  and optional `elision`. It has no provenance, completion/fallback status,
+  cache-hit field, chunk coverage or schema version.
+- The CLI exposes model selection and cache refresh, but no aggregate
+  deadline/call/token budget. Engine limits are per run/chunk. The CLI's API
+  AbortController is not connected to process cancellation.
+- Fresh-agent login probes have a timeout; the review child has no execution
+  deadline. Child stdout is forwarded, without a structured meat result; its
+  stderr log is hidden unless `-verbose` or failure.
+- Flag parsing errors exit 2. Source-selection conflicts, empty input and
+  runtime failures exit 1. Help exits 0 and writes usage to stderr.
+- API progress is interactive only; token/cache notices go to stderr.
+  Cached token totals describe the original computation.
+
+Evidence: [main.ts](../src/cli/main.ts) (`readDiff`, `run`, `main`),
+[render.ts](../src/cli/render.ts) (`renderJSON`),
+[agent.ts](../src/cli/agent.ts), [prompt.ts](../src/cli/prompt.ts).
+Existing assertions live in [CLI tests](../test/cli/).
+[Observation](observe.md) owns the implemented P1 surface.
+[Agent interface](agent-interface.md) retains the broader proposed remedies;
+[roadmap](../docs/roadmap.md) orders them.
+
+## Historical Go baseline
 
 > Status: stage 1 ✅ | stage 2 ✅
 > Go sources: `cmd/meat/main.go`, `cmd/meat/stdin.go`, `cmd/meat/isatty_*.go`
@@ -822,71 +974,3 @@ value/unit/boundary schema for numeric limits.
   restricts `meat` to Unix-like platforms, so its `func isatty(fd
   uintptr) bool { return false }` fallback is live, reachable code, not
   a vestige.
-
-### Workflow composition
-
-“Use columbo to <outcome>” is the agent-facing entry point. The agent selects an
-activity and reads requested or relevant specialist guidance; Prime does not
-fetch, install or execute extensions. URL-based instruction loading resolves
-relative resources at the same revision. Audit selects a domain, distinguishes
-leads from findings and reports coverage, root cause and recommended fixes.
-Native host continuation is optional and explicitly requested; it preserves
-explicit user limits and does not convert an exhausted limit into goal success.
-
-### Optional behavior reading views
-
-Statecharts are agent-authored views within existing activities. The bootstrap
-links `prime/optional/statecharts.md`, distributed through `prime/optional` and
-loaded only when needed; ordinary Prime resources and activity names are unchanged.
-Charts identify proposed, implementation-traced or model-checked evidence, with
-snapshot/source references where applicable, assumptions and omissions. A
-model-checked report requires an actual tool result and distinguishes violations,
-unchecked properties and implementation correspondence. columbo adds no renderer,
-model checker, new activity or compiler guarantee for these views.
-
-
-## Local evidence state (TypeScript)
-
-`status`, `snapshot`, and `record` are offline JSON-envelope commands, using the
-existing 0/1/2 exit semantics. `status [--task ID]` is read-only, reports Git HEAD,
-branch, porcelain-v1 status and explicit records, and does not create a store.
-`snapshot --file PATH` accepts repeated repository-root-relative regular files,
-rejects symlink traversal and root escapes, and emits byte SHA-256 fingerprints.
-`record --file JSON` validates an intent/evidence/decision union, rejects unknown
-fields, and publishes immutable records in worktree-local `--git-path
-columbo-state-v1`. Same-ID same-content submissions are idempotent; conflicting
-content fails. Publication uses an exclusive temporary file and atomic hard link,
-with cleanup, so existing records are never overwritten.
-
-Evidence requires an existing intent and 1-100 supporting file fingerprints that
-match at recording time. Status rehashes supporting files; unchanged bytes yield
-`supporting_inputs_unchanged`, changed/missing/unsafe/unreadable files yield
-`needs_recheck`. Every evidence record exposes `verified_by_columbo:false` regardless
-of basis (source, inference, reported_check). Checks are not executed. Actor labels
-are assertions, not authenticated identities. Unrecorded dependencies/environment
-are explicitly outside freshness guarantees.
-
-Decisions reference an intent and have a question and nullable answer. A new
-record may supersede an existing decision in that task. Unanswered leaves remain
-unresolved. Multiple successors produce explicit conflict IDs. Resolution does
-not authorize execution. No implicit active task, automatic memory promotion,
-state pruning, host goals or hooks are created. Original records remain available.
-
-Records bind the canonical repository path, so a moved checkout fails visibly.
-The store accepts at most 1000 records, each input at most 1 MiB, and each source
-at most 16 MiB. Corrupt records and unknown references fail rather than disappear.
-Capabilities/help expose the commands and their mutation scope; old compiler,
-packet, cache, and legacy CLI contracts are unchanged. Git revisions named status,
-snapshot, record or record-schema can be selected with `columbo -- REVISION`.
-Evidence: `src/cli/state.ts`, `test/cli/state.test.ts`.
-
-
-Status defaults to a summary: evidence IDs, bases, freshness and source statuses,
-plus current decision leaves. Omission counts and an argument-array detail command
-make the missing claim text and superseded history explicit. `--details` returns
-full records; `--task` restricts record scope. Supporting paths share a per-call
-fingerprint cache, and hashing streams bounded files rather than loading all
-source bytes at once. Git observation disables optional index locks. Observations
-are not an atomic repository snapshot across concurrent source changes.
-`record-schema --json` exposes the strict input variants and semantic constraints
-without Git/model access. It is discoverable through capabilities.

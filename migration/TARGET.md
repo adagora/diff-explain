@@ -1,5 +1,11 @@
 # Target: TypeScript on Node
 
+> Historical port target. Current runtime and build requirements are in
+> [package.json](../package.json) and [README](../README.md), including Node
+> 22.18+. Original version examples and binding language below describe the
+> migration. Current design and planned work live in
+> [system design](../docs/system-design.md) and [roadmap](../docs/roadmap.md).
+
 The stack stage 3 builds against. Decisions here are settled; changing one means
 revisiting the specs that assume it.
 

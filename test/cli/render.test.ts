@@ -14,7 +14,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { openSync, closeSync, writeSync, mkdtempSync, readFileSync } from "node:fs";
+import { openSync, closeSync, writeSync, mkdtempSync, readFileSync, fstatSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { encodeUTF8 } from "../../src/meat/bytes.ts";
@@ -135,8 +135,8 @@ test("isTerminal: an in-memory writer with no fd is never a terminal (render_tes
 });
 
 // Ported from render_test.go's TestIsTerminalRegularFileAndDevNull: guards
-// against a naive char-device check misclassifying /dev/null as a tty.
-describe("isTerminal: regular file and /dev/null are both non-terminals (render_test.go:108-126)", () => {
+// against a naive char-device check misclassifying the null device as a tty.
+describe("isTerminal: regular file and null device are both non-terminals (render_test.go:108-126)", () => {
   test("a regular file must not be a terminal", () => {
     const dir = mkdtempSync(join(tmpdir(), "meat-render-"));
     const fd = openSync(join(dir, "out"), "w");
@@ -147,15 +147,10 @@ describe("isTerminal: regular file and /dev/null are both non-terminals (render_
     }
   });
 
-  test("/dev/null (a character device) must not be a terminal", (t) => {
-    let fd: number;
+  test("null device must not be a terminal", () => {
+    const fd = openSync(process.platform === "win32" ? "\\\\.\\NUL" : "/dev/null", "w");
     try {
-      fd = openSync("/dev/null", "w");
-    } catch {
-      t.skip("cannot open /dev/null");
-      return;
-    }
-    try {
+      assert.equal(fstatSync(fd).isCharacterDevice(), true);
       assert.equal(isTerminal(fileWriter(fd)), false);
     } finally {
       closeSync(fd);

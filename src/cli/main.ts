@@ -42,7 +42,7 @@
 // (specs/cli.md Open questions), so this is new coverage, not a port.
 
 import { execFileSync } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { arrayAt, trimSpace, encodeUTF8, decodeUTF8 } from "../meat/bytes.ts";
 import { type Request, type Result, Abridge } from "../meat/meat.ts";
@@ -57,6 +57,9 @@ import { formatReviewPrompt } from "./prompt.ts";
 import { reviewWithAgent } from "./agent.ts";
 import { runBridge } from "./bridge.ts";
 import { applyColumboEnvironment } from "./brand.ts";
+import { collectSnapshot, SnapshotError, maxGitOutputBytes } from "./snapshot.ts";
+import { observeHelp, observeSnapshot, inventoryArtifact, evidenceArtifact, planningArtifact, capabilityArtifact, type ObserveOperation } from "./observe.ts";
+import { doctorReport } from "./doctor.ts";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -66,43 +69,56 @@ function goTrimSpaceString(s: string): string {
   return decodeUTF8(trimSpace(encodeUTF8(s)));
 }
 
-// Go's `usage` constant (`cmd/meat/main.go:44-86`) plus TypeScript-only
-// `-look` (no-model shape/color/length view). The Go wording is otherwise
-// kept as the user-facing copy.
-export const usage = `columbo — understand code, work on changes, and review with evidence
-Formerly Thread and Meat; the meat command remains a compatibility alias.
+// Go's `usage` constant (`cmd/meat/main.go:44-86`) behind a TypeScript-only
+// "Start here" section that leads with the workflows needing no API key.
+// The Go wording is otherwise kept as the user-facing copy.
+export const usage = `columbo — review a code change with evidence across agent sessions
 
-Usage:
-  columbo status --json          Inspect recorded intent, evidence freshness, and decisions.
-  columbo snapshot --file PATH   Hash source files for evidence.
-  columbo record --file JSON     Save an immutable local intent, evidence, or decision.
-  columbo setup                  Preview skill installation into the current project.
-  columbo setup --yes            Install project skills for Codex and Claude Code.
-  columbo prime                  Load the local workflow for your current agent session.
-  columbo prime understand       Trace the code relevant to a question.
-  columbo prime work             Implement, check, then review substantial changes.
-  columbo prime review           Review the actual diff and leave useful evidence.
-  columbo prime audit            Investigate the whole codebase and report coverage.
-  columbo prime converge         Fix evidenced issues in a bounded review cycle.
-  columbo capabilities --json    Discover commands, schemas, errors, and limits offline.
-  columbo guide                  Read the agent workflow (or: columbo help packet).
-  columbo packet HEAD            Export a JSON planning snapshot for any agent/model.
-  columbo compile --packet packet.json --plan plan.json
-                                        Compile a plan offline.
-  columbo abridge -json HEAD     Run the API-key abridger (alias for columbo -json HEAD).
-  columbo                        Summarize the most recent commit (HEAD) in the current git repo.
-  columbo <revision>             Summarize a specific commit or revision (e.g. a sha, HEAD~3).
-  columbo <range>                Diff across a commit range (e.g. sha1..sha2, main...HEAD).
-  columbo -staged                Abridge the staged (index) changes: git diff --staged.
-  columbo -w                     Abridge the unstaged working-tree changes: git diff.
-  git show <sha> | columbo       Abridge the diff piped on stdin.
-  git diff | columbo             Abridge the working-tree diff piped on stdin.
-  columbo -look                  Look at the diff's shape, color, and length (no model).
-  git diff | columbo -look       Same, from a piped unified diff.
+Usage: columbo [flags] [change]
+       columbo <command> [args]
 
-columbo reads a unified diff (from stdin, from a named revision or range, or
-HEAD when stdin is a terminal), asks an LLM to drop everything not worth reading,
-and prints the abridged diff plus a one-line summary.
+Start here (no API key needed):
+  columbo -doctor             Check which review workflows work on this machine.
+  columbo -look HEAD          Show the change's shape, size, and full diff.
+  columbo -prompt HEAD        Print a review packet for the agent session you already use.
+  columbo -prompt -o review.md HEAD
+                              Save the packet as exact UTF-8 (safe in PowerShell too).
+  columbo -agent codex HEAD   Fresh review with your Codex subscription (or -agent claude).
+  columbo prime work --json   Load the workflow for the agent session you already use.
+  columbo status --json       Inspect recorded intent, evidence freshness, and decisions.
+  columbo setup               Preview installing skills into the current project.
+  In Claude Code the meat skill answers /meat HEAD; in Codex type $meat explain HEAD.
+
+Workflow commands (offline; they print instructions or write local records):
+  columbo prime [understand|work|review|audit|converge] [--json]
+  columbo status [--task ID] [--details] [--json]
+  columbo snapshot --file PATH [--file PATH ...] [--json]
+  columbo record --file RECORD.json [--json]
+  columbo record-schema --json
+  columbo setup [--agent codex|claude|both] [--project DIR] [--dry-run|--yes] [--json]
+  columbo capabilities --json
+  columbo guide
+
+Choose the change. Flags always go before it:
+  HEAD, a sha, HEAD~3         One commit.
+  main...HEAD, A..B           A range, e.g. your branch since it left main.
+  -staged, -w                 Staged changes, or unstaged changes to tracked files.
+  git diff | columbo -prompt  A piped unified diff.
+
+Abridge with an API model (the default when no workflow flag is given):
+  columbo                 Summarize the most recent commit (HEAD) in the current git repo.
+  columbo <revision>      Summarize a specific commit or revision (e.g. a sha, HEAD~3).
+  columbo <range>         Diff across a commit range (e.g. sha1..sha2, main...HEAD).
+  columbo -staged         Abridge the staged (index) changes: git diff --staged.
+  columbo -w              Abridge the unstaged working-tree changes: git diff.
+  git show <sha> | columbo   Abridge the diff piped on stdin.
+  git diff | columbo         Abridge the working-tree diff piped on stdin.
+  columbo -look              Look at the diff's shape, color, and length (no model).
+  git diff | columbo -look   Same, from a piped unified diff.
+
+columbo reads a unified diff (from stdin, from a named revision or range, or HEAD
+when stdin is a terminal), asks an LLM to drop everything not worth reading, and
+prints the abridged diff plus a one-line summary.
 
 -look skips the model: it prints the spatial add/remove/context shape, an
 explicit length (+added -deleted ~context), and the unified-diff text itself.
@@ -124,7 +140,11 @@ Flags:
   -json           Emit the result as JSON on stdout (no color, no pager).
   -look           Print shape, color, and length of the diff, then the unified-diff text. No model, no API key.
   -prompt         Export a Markdown review packet for your existing agent. No model, no API key.
-  -agent string   Run a subscription CLI review: codex or claude (no API-key call).
+  -agent string   Run a subscription CLI review: codex or claude (no API call by the local CLI).
+  -verbose        With -agent, stream the agent's own log instead of hiding it.
+  -o file         Write the output to file as exact UTF-8 instead of stdout.
+  -doctor         Check which workflows work here. No model call; probes agent login status.
+${observeHelp}\
   -h, --help      Show this help.
 
 Environment:
@@ -157,6 +177,15 @@ export interface ParsedFlags {
   readonly look: boolean;
   readonly prompt: boolean;
   readonly agent: string;
+  readonly verbose: boolean;
+  readonly output: string;
+  readonly doctor: boolean;
+  readonly operation: ObserveOperation | "";
+  readonly evidence: string;
+  readonly pageSize: number;
+  readonly maxBytes: number;
+  readonly cursor: string;
+  readonly snapshot: string;
   readonly positional: readonly string[];
 }
 
@@ -194,6 +223,17 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
   let look = false;
   let prompt = false;
   let agent = "";
+  let verbose = false;
+  let output = "";
+  let doctor = false;
+  let operation: ObserveOperation | "" = "";
+  let evidence = "";
+  let pageSize = 20;
+  let maxBytes = 8192;
+  let cursor = "";
+  let snapshot = "";
+  let pageOption = false;
+  let byteOption = false;
   let i = 0;
 
   while (i < argv.length) {
@@ -224,8 +264,11 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
       name = name.slice(0, eq);
     }
 
-    const isBoolFlag = name === "no-cache" || name === "staged" || name === "w" || name === "json" || name === "look" || name === "prompt";
-    if (!isBoolFlag && name !== "model" && name !== "agent") {
+    const observeBool = name === "inventory" || name === "plan" || name === "capabilities";
+    const observeString = name === "evidence" || name === "page-size" || name === "max-bytes" || name === "cursor" || name === "snapshot";
+    const isBoolFlag = name === "no-cache" || name === "staged" || name === "w" || name === "json" || name === "look" || name === "prompt" ||
+      name === "verbose" || name === "doctor" || observeBool;
+    if (!isBoolFlag && !observeString && name !== "model" && name !== "agent" && name !== "o") {
       if (name === "help" || name === "h") {
         return { kind: "help" };
       }
@@ -246,11 +289,18 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
       } else {
         boolVal = true; // bare -flag never consumes the next argument
       }
-      if (name === "no-cache") noCache = boolVal;
+      if (observeBool) {
+        if (boolVal && operation !== "" && operation !== name) return { kind: "error", message: "Choose only one offline observation operation" };
+        if (boolVal) operation = name as ObserveOperation;
+        else if (operation === name) operation = "";
+      }
+      else if (name === "no-cache") noCache = boolVal;
       else if (name === "staged") staged = boolVal;
       else if (name === "w") worktree = boolVal;
       else if (name === "look") look = boolVal;
       else if (name === "prompt") prompt = boolVal;
+      else if (name === "verbose") verbose = boolVal;
+      else if (name === "doctor") doctor = boolVal;
       else jsonOut = boolVal;
       continue;
     }
@@ -268,10 +318,38 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
     if (name === "agent" && value === "") {
       return { kind: "error", message: "-agent requires codex or claude" };
     }
-    if (name === "agent") agent = value;
+    if (name === "o") {
+      if (value === "") return { kind: "error", message: "-o requires a file path" };
+      output = value;
+      continue;
+    }
+    if (name === "evidence") {
+      if (value === "" || value.length > 128) return { kind: "error", message: "-evidence requires an inventory entry id" };
+      if (operation !== "" && operation !== "evidence") return { kind: "error", message: "Choose only one offline observation operation" };
+      operation = "evidence"; evidence = value;
+    } else if (name === "page-size" || name === "max-bytes") {
+      const number = Number(value);
+      const max = name === "page-size" ? 100 : 16384;
+      if (!/^[0-9]+$/.test(value) || !Number.isSafeInteger(number) || number < 1 || number > max) return { kind: "error", message: `-${name} must be an integer from 1 to ${max}` };
+      if (name === "page-size") { pageSize = number; pageOption = true; }
+      else { maxBytes = number; byteOption = true; }
+    } else if (name === "cursor") {
+      if (value === "" || value.length > 2048) return { kind: "error", message: "-cursor requires a bounded continuation token" };
+      cursor = value;
+    } else if (name === "snapshot") {
+      if (!/^[0-9a-f]{64}$/.test(value)) return { kind: "error", message: "-snapshot requires a SHA-256 snapshot id" };
+      snapshot = value;
+    } else if (name === "agent") agent = value;
     else model = value;
   }
 
+  if (doctor && (model !== "" || noCache || staged || worktree || jsonOut || look || prompt || agent !== "" || verbose ||
+    output !== "" || operation !== "" || pageOption || byteOption || cursor !== "" || snapshot !== "" || argv.slice(i).length > 0)) {
+    return { kind: "error", message: "-doctor takes no source or other flags" };
+  }
+  if (verbose && agent === "") {
+    return { kind: "error", message: "-verbose applies only to -agent" };
+  }
   if (prompt && (look || jsonOut)) {
     return { kind: "error", message: "-prompt cannot be combined with -look or -json" };
   }
@@ -281,7 +359,105 @@ export function parseFlags(argv: readonly string[]): ParseFlagsResult {
   if (agent !== "" && (prompt || look || jsonOut || model !== "" || noCache)) {
     return { kind: "error", message: "-agent cannot combine with -prompt, -look, -json, -model, or -no-cache" };
   }
-  return { kind: "ok", flags: { model, noCache, staged, worktree, jsonOut, look, prompt, agent, positional: argv.slice(i) } };
+  if (operation !== "" && (look || prompt || jsonOut || agent !== "" || model !== "" || noCache)) return { kind: "error", message: "Offline observation cannot combine with legacy output, agent, model or cache flags" };
+  if (operation === "" && (pageOption || byteOption || cursor !== "" || snapshot !== "")) return { kind: "error", message: "Observation options require an offline observation operation" };
+  if (operation === "capabilities" && (staged || worktree || argv.slice(i).length > 0 || pageOption || byteOption || cursor !== "" || snapshot !== "")) return { kind: "error", message: "-capabilities does not take a source or pagination options" };
+  if (operation === "evidence" && snapshot === "") return { kind: "error", message: "-evidence requires -snapshot from its parent inventory" };
+  if (pageOption && operation !== "inventory" && operation !== "plan") return { kind: "error", message: "-page-size requires -inventory or -plan" };
+  if (byteOption && operation !== "evidence") return { kind: "error", message: "-max-bytes requires -evidence" };
+  return { kind: "ok", flags: { model, noCache, staged, worktree, jsonOut, look, prompt, agent, verbose, output, doctor, operation, evidence, pageSize, maxBytes, cursor, snapshot, positional: argv.slice(i) } };
+}
+
+// ---------------------------------------------------------------------------
+// Recovery hints: extra lines after an error, never a change to its text or
+// exit code. They name the command the user most likely meant.
+// ---------------------------------------------------------------------------
+
+/** Words people type for a workflow, mapped to the flag that runs it. */
+const workflowWords: Readonly<Record<string, string>> = {
+  look: "-look", shape: "-look", show: "-look",
+  prompt: "-prompt", packet: "-prompt", explain: "-prompt",
+  review: "-agent codex", agent: "-agent codex", codex: "-agent codex", claude: "-agent claude",
+  json: "-json", inventory: "-inventory", plan: "-plan", capabilities: "-capabilities",
+  doctor: "-doctor", setup: "-doctor", check: "-doctor", help: "-h",
+  staged: "-staged", worktree: "-w", unstaged: "-w",
+};
+
+/** A hint for an undefined flag that names a known workflow word. */
+export function flagHint(message: string): string {
+  const name = /^flag provided but not defined: -(.+)$/.exec(message)?.[1];
+  const flag = name === undefined ? undefined : workflowWords[name.toLowerCase()];
+  return flag === undefined ? "" : `hint: did you mean ${flag}?\n`;
+}
+
+/** A hint for a source that failed to resolve because of a misplaced flag or a workflow word. */
+export function sourceHint(positional: readonly string[]): string {
+  const flags = positional.slice(1).filter(arg => arg.startsWith("-"));
+  if (flags.length > 0) {
+    const rest = positional.filter(arg => !arg.startsWith("-"));
+    return `hint: flags go before the change: columbo ${[...flags, ...rest].join(" ")}\n`;
+  }
+  const first = positional[0];
+  const flag = first === undefined ? undefined : workflowWords[first.toLowerCase()];
+  if (flag === undefined) return "";
+  const rest = positional.slice(1);
+  if (flag === "-h" || flag === "-doctor") return `hint: did you mean columbo ${flag}?\n`;
+  return `hint: did you mean columbo ${flag} ${rest.length > 0 ? rest.join(" ") : "HEAD"}?\n`;
+}
+
+function quoteArg(arg: string): string {
+  return /^[\w./\\~^@:+=-]+$/.test(arg) ? arg : `"${arg.replaceAll('"', '\\"')}"`;
+}
+
+/** Commands that need no API key, for the selection the user just made. */
+export function noKeyHint(selection: string, stdin: boolean, dotEnv: boolean, entry: string): string {
+  const s = selection === "" ? "" : ` ${selection}`;
+  const rows: Array<[string, string]> = [
+    [`columbo -prompt${s}`, "review packet for the agent session you already use"],
+    [`columbo -agent codex${s}`, "fresh review with your Codex subscription (or -agent claude)"],
+    [`columbo -look${s}`, "offline shape and full diff"],
+    ["columbo -doctor", "check which of these work on this machine"],
+  ];
+  const width = Math.max(...rows.map(([command]) => command.length)) + 3;
+  let hint = "hint: these need no API key:\n" + rows.map(([command, what]) => `  ${command.padEnd(width)}${what}\n`).join("");
+  if (stdin) hint += "  (pipe the same diff into each command)\n";
+  if (dotEnv) hint += `hint: a .env file is here, but columbo does not load it. To use it: node --env-file=.env ${quoteArg(entry)}${s}\n`;
+  return hint;
+}
+
+// ---------------------------------------------------------------------------
+// Output destination: stdout, or a file written whole with -o
+// ---------------------------------------------------------------------------
+
+interface Output {
+  readonly writer: Writer;
+  bytes(chunk: Uint8Array): void;
+  /** With -o, write everything collected to the file; nothing is written for a failed run. */
+  finish(): void;
+}
+
+function openOutput(path: string): Output {
+  if (path === "") {
+    return { writer: processWriter(process.stdout), bytes: (chunk) => void process.stdout.write(chunk), finish: () => {} };
+  }
+  // No fd: rendering treats the destination as a non-terminal (plain, no pager).
+  const chunks: Buffer[] = [];
+  return {
+    writer: { write: (text) => void chunks.push(Buffer.from(text, "utf8")) },
+    bytes: (chunk) => void chunks.push(Buffer.from(chunk)),
+    finish: () => {
+      const data = Buffer.concat(chunks);
+      const temp = `${path}.meat-${process.pid}.tmp`;
+      try {
+        writeFileSync(temp, data);
+        renameSync(temp, path);
+      } catch (err) {
+        rmSync(temp, { force: true });
+        throw new Error(`writing ${path}: ${errorMessage(err)}`);
+      }
+      process.stderr.write(`meat: wrote ${path} (${data.length} bytes)\n`);
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +477,9 @@ type ExecSyncError = Error & { readonly status?: number | null; readonly stderr?
  */
 export function git(...args: readonly string[]): Uint8Array {
   try {
-    const out = execFileSync("git", args as string[], { stdio: ["ignore", "pipe", "pipe"] });
+    // stderr is captured, as Go's `.Output()` does, so git's own message
+    // appears once (inside ours) and success-path warnings stay quiet.
+    const out = execFileSync("git", args as string[], { maxBuffer: maxGitOutputBytes, stdio: ["ignore", "pipe", "pipe"] });
     return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
   } catch (err) {
     const e = err as ExecSyncError;
@@ -532,51 +710,100 @@ export async function main(): Promise<void> {
     process.exit(0);
   }
   if (parsed.kind === "error") {
-    process.stderr.write(`${parsed.message}\n${usage}`);
+    // Go's flag package printed the whole usage here; a pointer keeps the
+    // actual error visible. Exit code 2 is unchanged.
+    process.stderr.write(`${fatalMessage(parsed.message)}\n${flagHint(parsed.message)}Run "columbo -h" for usage and examples.\n`);
     process.exit(2);
   }
-  const { model: modelFlag, noCache, staged, worktree, jsonOut, look, prompt, agent, positional } = parsed.flags;
+  const { model: modelFlag, noCache, staged, worktree, jsonOut, look, prompt, agent, verbose, output, positional } = parsed.flags;
+
+  if (parsed.flags.doctor) {
+    process.stdout.write(doctorReport());
+    return;
+  }
+
+  const out = openOutput(output);
+  const finishOutput = (): void => {
+    try {
+      out.finish();
+    } catch (err) {
+      fatal(errorMessage(err));
+    }
+  };
+
+  if (parsed.flags.operation !== "") {
+    try {
+      const { operation, evidence, pageSize, maxBytes, cursor, snapshot: expected } = parsed.flags;
+      if (operation === "capabilities") {
+        out.writer.write(JSON.stringify(capabilityArtifact()) + "\n");
+        finishOutput();
+        return;
+      }
+      const snapshot = await collectSnapshot(positional, staged, worktree);
+      if (trimSpace(snapshot.diff).length === 0) throw new SnapshotError("empty_input", "No diff to read; select a nonempty change.");
+      if (expected !== "" && expected !== snapshot.id) throw new SnapshotError("source_changed", "Snapshot identity changed; capture a new inventory.");
+      const observation = observeSnapshot(snapshot);
+      const artifact = operation === "inventory" ? inventoryArtifact(observation, pageSize, cursor) :
+        operation === "evidence" ? evidenceArtifact(observation, evidence, maxBytes, cursor) : planningArtifact(observation, pageSize, cursor);
+      out.writer.write(JSON.stringify(artifact) + "\n");
+    } catch (error) {
+      const diagnostic = { schema: "meat.observe", version: 1, kind: "diagnostic", code: error instanceof SnapshotError ? error.code : "invalid_request",
+        stage: "observation", message: errorMessage(error).slice(0, 2048) };
+      process.stderr.write(JSON.stringify(diagnostic) + "\n");
+      process.exitCode = 1;
+      return;
+    }
+    finishOutput();
+    return;
+  }
 
   let diff: Uint8Array;
   let source: string;
   try {
     ({ diff, source } = await readDiff(positional, staged, worktree));
   } catch (err) {
-    fatal(errorMessage(err));
+    fatal(`${errorMessage(err)}\n${sourceHint(positional)}`.trimEnd());
   }
   if (trimSpace(diff).length === 0) {
     fatal(`no diff to read (${source})`);
   }
 
   if (prompt) {
-    process.stdout.write(formatReviewPrompt(diff, source));
+    out.writer.write(formatReviewPrompt(diff, source));
+    finishOutput();
     return;
   }
 
   if (agent !== "") {
     try {
-      await reviewWithAgent(agent, formatReviewPrompt(diff, source));
+      await reviewWithAgent(agent, formatReviewPrompt(diff, source), output === "" ? { verbose } : { verbose, output: (chunk) => out.bytes(chunk) });
     } catch (err) {
       fatal(errorMessage(err));
     }
+    finishOutput();
     return;
   }
 
   if (look) {
     // No model, no cache, no API key. Color follows the same tty + git
     // color.diff policy as abridge rendering; piped output stays plain.
-    const out = processWriter(process.stdout);
-    const tty = isTerminal(out);
+    const tty = isTerminal(out.writer);
     const color = tty && gitWantsColor(tty);
-    process.stdout.write(formatDiffLook(diff, palette(color)));
+    out.writer.write(formatDiffLook(diff, palette(color)));
+    finishOutput();
     return;
   }
 
-  // Progress feedback is strictly interactive: only when BOTH stdout and
-  // stderr are terminals (so `meat > file` and `meat 2> log` stay clean),
-  // and never in -json mode.
+  // The selection as typed, for recovery hints.
+  const selection = positional.length > 0 ? quoteArg(arrayAt(positional, 0)) : staged ? "-staged" : worktree ? "-w" : source === "stdin" ? "" : "HEAD";
+
+  // Progress feedback is strictly interactive: only when stderr is a
+  // terminal and the result is not going to a redirected stdout (so
+  // `meat > file` and `meat 2> log` stay clean), and never when -json
+  // writes to stdout.
   let progress: (msg: string) => void = () => {};
-  const interactive = !jsonOut && isTerminal(processWriter(process.stdout)) && isTerminal(processWriter(process.stderr));
+  const interactive = isTerminal(processWriter(process.stderr)) &&
+    (output !== "" || (!jsonOut && isTerminal(processWriter(process.stdout))));
   if (interactive) {
     progress = (msg: string) => {
       process.stderr.write(`\r\x1b[Kmeat: ${msg}`);
@@ -588,7 +815,12 @@ export async function main(): Promise<void> {
   // selected provider model (which needs credentials/network) only here,
   // AFTER the cache check.
   const compute = async (signal: AbortSignal): Promise<Result> => {
-    const model = await NewModelFromEnv(signal, modelFlag);
+    let model: Awaited<ReturnType<typeof NewModelFromEnv>>;
+    try {
+      model = await NewModelFromEnv(signal, modelFlag);
+    } catch (err) {
+      throw new Error(`${errorMessage(err)}\n${noKeyHint(selection, source === "stdin", existsSync(".env"), process.argv[1] ?? "columbo")}`.trimEnd());
+    }
     // Confine the read-only tools to the repo root, when we're in one, so
     // the agent can inspect surrounding source for clues.
     const req: Request = { repoRoot: gitRoot(), unifiedDiff: diff, progress };
@@ -601,12 +833,12 @@ export async function main(): Promise<void> {
     }
     const elision = ElisionLine(diff, res.smartDiff);
     if (jsonOut) {
-      process.stdout.write(renderJSON(res, elision));
+      out.writer.write(renderJSON(res, elision));
       return;
     }
     // On an interactive terminal, render like `git show`: git's diff
-    // colors and git's pager. Otherwise (piped/redirected) print plain.
-    renderResult(processWriter(process.stdout), res, elision);
+    // colors and git's pager. Otherwise (piped/redirected/-o) print plain.
+    renderResult(out.writer, res, elision);
   };
 
   const opts: RunOpts = {
@@ -627,6 +859,7 @@ export async function main(): Promise<void> {
     }
     fatal(errorMessage(err));
   }
+  finishOutput();
 }
 
 function isMainModule(): boolean {
@@ -645,6 +878,12 @@ function isMainModule(): boolean {
 }
 
 if (isMainModule()) {
+  // A reader that stops early (`meat -look HEAD | head`) closes the pipe.
+  // Exit quietly, as git does, instead of crashing on an unhandled EPIPE.
+  process.stdout.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EPIPE") process.exit(0);
+    throw err;
+  });
   main().catch((err: unknown) => {
     process.stderr.write(`meat: ${errorMessage(err)}\n`);
     process.exit(1);

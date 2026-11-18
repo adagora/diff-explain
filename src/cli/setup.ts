@@ -67,13 +67,16 @@ function renderSkill(text: string, launcher: string): string {
   return text.slice(0, end + 4) + runtime + text.slice(end + 4);
 }
 
-async function classify(project: string, path: string, source: string, content: string): Promise<{ action: Action; reason: string }> {
+async function classify(project: string, path: string, source: string, bundled: string, content: string): Promise<{ action: Action; reason: string }> {
   const blocked = await blockedParent(project, path);
   if (blocked !== null) return { action: "conflict", reason: `Parent is a symlink or non-directory: ${blocked}` };
   const existing = await inspect(path);
   if (existing === null) return { action: "create", reason: "File does not exist" };
   if ((existing.isFile() || existing.isSymbolicLink()) && await realpath(path).catch(() => "") === source) {
     return { action: "bundled", reason: "Already resolves to this installation's bundled skill" };
+  }
+  if (existing.isFile() && !existing.isSymbolicLink() && existing.size === Buffer.byteLength(bundled) && (await readFile(path)).equals(Buffer.from(bundled))) {
+    return { action: "bundled", reason: "Matches this installation's bundled skill" };
   }
   if (existing.isFile() && !existing.isSymbolicLink() && existing.size === Buffer.byteLength(content) && (await readFile(path)).equals(Buffer.from(content))) {
     return { action: "unchanged", reason: "Already matches the requested installation" };
@@ -107,17 +110,17 @@ export async function setupProject(options: SetupOptions) {
     try {
       const source = await realpath(path);
       const text = await readFile(source, "utf8");
-      return { skill, source, content: skill === "show-me" ? text : renderSkill(text, launcher) };
+      return { skill, source, bundled: text, content: skill === "show-me" ? text : renderSkill(text, launcher) };
     } catch {
       throw new CLIError("setup_assets", `Cannot load the bundled ${skill} skill`, "Reinstall columbo from a complete package, then rerun columbo setup.");
     }
   }));
   const files: SetupFile[] = [];
-  const content = new Map<string, { source: string; content: string }>();
+  const content = new Map<string, { source: string; bundled: string; content: string }>();
   for (const agent of agents) {
     for (const asset of assets) {
       const path = join(project, hostRoots[agent], "skills", asset.skill, "SKILL.md");
-      files.push({ agent, skill: asset.skill, path, ...await classify(project, path, asset.source, asset.content) });
+      files.push({ agent, skill: asset.skill, path, ...await classify(project, path, asset.source, asset.bundled, asset.content) });
       content.set(path, asset);
     }
   }
@@ -132,7 +135,7 @@ export async function setupProject(options: SetupOptions) {
     try {
       for (const file of files) {
         const asset = content.get(file.path)!;
-        const current = await classify(project, file.path, asset.source, asset.content);
+        const current = await classify(project, file.path, asset.source, asset.bundled, asset.content);
         if (current.action === "conflict" || (file.action !== "create" && current.action === "create")) {
           throw new CLIError("setup_changed", `Setup target changed after preview: ${file.path}`, "Rerun columbo setup --dry-run before applying again.");
         }

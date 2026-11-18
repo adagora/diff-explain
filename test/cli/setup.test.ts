@@ -58,7 +58,7 @@ test("apply installs usable Codex skills and repeated setup preserves bytes and 
   const again = run(["codex", "--yes", "--json"], project);
   assert.equal(again.status, 0);
   assert.deepEqual(JSON.parse(again.stdout).data.created, []);
-  assert.ok(JSON.parse(again.stdout).data.files.every((file: { action: string }) => file.action === "unchanged"));
+  assert.ok(JSON.parse(again.stdout).data.files.every((file: { action: string }) => file.action === "unchanged" || file.action === "bundled"));
   assert.equal(statSync(path).mtimeMs, mtime);
   assert.equal(readFileSync(path, "utf8"), before);
   assert.equal(readFileSync(join(project, "AGENTS.md"), "utf8"), "Keep my project rules.\n");
@@ -129,12 +129,12 @@ test("setup refuses symlinked parent directories and custom or dangling leaf sym
   }
 });
 
-test("the source checkout's own bundled skills are recognized without rewriting symlinks", () => {
+test("the source checkout's own bundled skills are recognized without rewriting", () => {
   const result = run(["--dry-run"], root);
   assert.equal(result.status, 0, result.stderr + result.stdout);
   const data = JSON.parse(result.stdout).data;
   assert.equal(data.ready, true);
-  assert.ok(data.files.every((file: { action: string }) => file.action === "bundled"));
+  assert.ok(data.files.every((file: { action: string }) => file.action === "bundled" || file.action === "unchanged"));
   assert.deepEqual(data.created, []);
 });
 

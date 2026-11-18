@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -109,7 +109,7 @@ test("columbo skill is shared across hosts and the distribution includes workflo
   assert.match(skill, /^name: columbo$/m);
   assert.match(skill, /prime work --json/);
   assert.match(skill, /prime review --json/);
-  for (const host of [".agents", ".grok"]) assert.equal(realpathSync(join(root, host, "skills/columbo/SKILL.md")), canonical);
+  for (const host of [".agents", ".grok"]) assert.equal(readFileSync(join(root, host, "skills/columbo/SKILL.md"), "utf8"), skill);
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const lock = JSON.parse(readFileSync(join(root, "package-lock.json"), "utf8"));
   assert.equal(pkg.name, "columbo-review");

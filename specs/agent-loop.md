@@ -1,5 +1,35 @@
 # agent-loop
 
+## Current scope and assurance limits
+
+This contract concerns meat's **API engine loop**. External subscription
+execution via `-agent` belongs to [cli](cli.md) and
+[agent.ts](../src/cli/agent.ts).
+
+Source-observed behavior in [meat.ts](../src/meat/meat.ts): each model chunk
+receives its own turn/time limits (defaults: 24 turns and four minutes).
+Chunks run sequentially; the public request has no aggregate token/cost limit.
+Provider HTTP retries are additional attempts within a model call.
+Only usage returned by successful model responses is accumulated; failed
+attempts may have unreported cost.
+
+A valid draft retained for refinement can return as fallback after later
+failure or exhaustion. Caller cancellation takes precedence. The public Result
+does not distinguish fallback from ordinary completion, and a later chunk
+failure throws without exposing earlier completed chunks or their usage.
+See [loop tests](../test/meat/meat.test.ts) for constrained cases.
+
+Compilation establishes source-derived elisions and specified structural
+invariants. It does not prove semantic completeness or summary accuracy.
+Chunk move checks apply when both full sides map contiguously into the same
+chunk; concatenation adds no global move-symmetry validation. Evidence:
+[mapMovesToChunk](../src/meat/chunk.ts), [compiler](../src/meat/editplan.ts).
+The proposed receipt/budget/recovery contracts are in
+[agent interface](agent-interface.md), implemented only by future
+[roadmap](../docs/roadmap.md) work.
+
+## Historical Go baseline
+
 > Status: stage 1 ✅ | stage 2 ✅
 > Go sources: `meat/meat.go`
 > Go tests: `meat/meat_test.go` (29 tests, the primary source), `meat/chunk_test.go` (Request compatibility, per-chunk run scoping)

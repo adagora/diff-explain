@@ -1,454 +1,303 @@
 # columbo
 
-**Understand unfamiliar code, make changes, and review them with evidence in your existing AI agent session.**
+**Understand unfamiliar code, change it, and review the change with evidence — in
+the agent session you already use.**
 
-columbo gives Claude Code, Codex, and other agents a shared workflow for tracing
-code, implementing requests, checking results, and handing work to the next
-session. For large or repetitive diffs, it also provides a compiler that turns an
-agent's selection plan into a smaller **reading diff**.
+columbo turns a large or repetitive git diff into a smaller **reading diff**, and
+carries explicit intent, evidence and decisions between sessions. It runs locally:
+no server, no hooks, no background agent. TypeScript in `src/` is the active
+implementation; the Go tree is the migration reference.
 
-Start by telling your agent:
-
-> Use columbo to explain how this project handles a request, from its entry point
-> to its output. Cite the files you trace and identify anything you did not inspect.
-
-The agent does the investigation. columbo supplies local instructions and tools.
-There is no server to start, automatic review hook, or background agent scheduler.
+For the architecture, document authority and proposed improvements, start with
+[system design](docs/system-design.md) and the [current roadmap](docs/roadmap.md).
+The [agent workflow](docs/agent-workflow.md) describes the commands available
+today, and the [CLI reference](docs/cli-reference.md) documents every command and
+JSON contract.
 
 Formerly **Thread** and **Meat**. The package is `columbo-review`; the `columbo`
-and `meat` commands launch the same CLI. The instructions below install from this
-checkout or a local package; no npm registry publication is assumed.
+and `meat` commands launch the same CLI. The `meat` engine protocol and wire
+kinds are unchanged.
 
-## What should I use?
+## Start here
 
-| Your situation | Start with | What you get |
-|---|---|---|
-| You have an agent open and need to understand or change code | “Use columbo to…” | The current agent investigates, works, and reports evidence |
-| You want to see a change without calling a model | `columbo -look HEAD` | Original diff, line counts, and a compact add/delete/context shape |
-| You want your current agent to explain a change | `columbo -prompt HEAD` | Markdown containing the full diff and explanation instructions |
-| A repetitive diff is hard to read | `columbo packet HEAD`, then `columbo compile …` | A snapshot-bound, compiler-validated reading diff from an agent-written plan |
-| You want automatic API-based abridging | `columbo abridge -json -model MODEL HEAD` | Model/tool/compiler loop, with chunking and caching |
-| You want a fresh signed-in CLI process to explain a change | `columbo -agent codex HEAD` or `columbo -agent claude HEAD` | Agent-authored prose using that CLI's subscription login |
-
-`prime`, `-look`, `-prompt`, `packet`, and `compile` make **no model calls**.
-An agent interpreting their output uses its normal model access. `-prompt`
-exports the full diff; it does not shorten it. Plain `columbo HEAD` selects the
-API abridger, so use an explicit command when choosing your access path.
-
-## Install and try it without a model
-
-You need **Git and Node 22.18+**. Node 24 is recommended by `.nvmrc`. Go is not
-needed. From this checkout:
+Requires Git and Node **22.18+**; Node 24 is recommended (`nvm use` if you use
+nvm). The source CLI and tests use Node's built-in TypeScript support.
+Go is not needed for normal use. columbo runs on Linux, macOS and Windows; the
+test suite is checked on Linux and Windows. Set up once from this checkout:
 
 ```sh
 npm ci
-npm run build
-node dist/cli/main.js -look HEAD
-node dist/cli/main.js prime understand
+npm run setup
 ```
 
-The first CLI command shows the latest commit's original diff and its shape.
-The second prints instructions for your current agent to follow; it does not
-inspect the repository itself.
+`setup` builds the CLI, links `columbo` and `meat` onto your PATH (`npm link`),
+installs the meat skill for Codex and Claude Code, and finishes with
+`columbo -doctor`. The doctor lists which review workflows work on this machine
+and how to fix the others. It asks installed agent CLIs for their login status
+but makes no model call, reads no diff and prints environment variable names,
+never values. Run it again after signing in or adding a key. To remove the
+commands, run `npm unlink -g columbo-review`.
 
-To make `columbo` and `meat` available as shell commands:
+On Linux, `npm link` fails with `EACCES` when Node was installed system-wide.
+Use a version manager such as nvm, or give npm a user prefix with
+`npm config set prefix ~/.local` (with `~/.local/bin` on your PATH), then rerun
+`npm run setup`. On Windows, npm creates `meat.cmd` and `meat.ps1`; PowerShell
+runs the latter under the default `RemoteSigned` policy.
 
-```sh
-npm link
-columbo capabilities --json
-```
+Without the link, use `node /path/to/columbo-review/dist/cli/main.js` wherever this page
+says `columbo`, or `npm start --` inside this checkout. `columbo -h` lists all flags.
 
-All examples below use `columbo`. Without linking, replace it with
-`node /absolute/path/to/meat/dist/cli/main.js`. Keep your shell in the repository
-being examined: Git input and relative file paths come from that working directory.
+## Understand, work, and review
 
-### Enable the workflow in another project
+Ask your agent:
 
-After linking, go to the project where you want to use columbo:
+> Use columbo to implement this change. Understand the relevant code first, run
+> the appropriate checks, and review consequential changes before finishing.
 
-```sh
-cd /path/to/your-project
-columbo setup --agent both
-columbo setup --agent both --yes
-```
+`columbo prime <activity> --json` loads local guidance for the current agent and
+prints it; it does not run another model, install hooks, or perform the task.
 
-The first command previews the exact files; the second installs the columbo,
-Meat compatibility, and show-me skills. Choose `--agent codex` or `--agent claude`
-for one host. Codex uses `.agents/skills/`; Claude Code uses `.claude/skills/`.
-You can also select a project with `--project /path/to/your-project`.
-
-Open a fresh agent session there and ask “Use columbo to explain this project.”
-If skill discovery is stale, ask the agent to run `columbo prime understand --json`
-and follow `data.instructions`. Installation alone does not register skills in
-all your repositories.
-
-Setup defaults to preview (`--dry-run`) and always returns JSON. Matching skills
-stay unchanged. Differing files or unsafe symlinks block installation; inspect
-`data.ready` and the listed paths. Preserve or move conflicts before retrying;
-there is no force-overwrite option. A filesystem failure during installation can
-leave partial new files, listed in the error for recovery.
-
-Installed skills contain absolute Node and CLI launch paths. Keep that installation
-available, and preview setup again after moving or upgrading it. Setup does not
-change `AGENTS.md`, `CLAUDE.md`, host settings, or credentials.
-
-### Share a local package with a teammate
-
-From the columbo checkout:
-
-```sh
-npm run check
-npm pack
-```
-
-`npm pack` builds the CLI and creates `columbo-0.1.0.tgz` for the current
-package version. Give the archive to your teammate. They run:
-
-```sh
-npm install -g ./columbo-0.1.0.tgz
-cd /path/to/their-project
-columbo setup --agent both
-columbo setup --agent both --yes
-```
-
-## Practical scenarios
-
-These prompts are examples for your own repository. Their file names and desired
-behavior should be adapted to your task; they are not claims about columbo's own
-application features.
-
-### 1. Join an unfamiliar project
-
-**Situation:** You need to change an importer but do not know how its parts fit.
-
-Ask your current agent:
-
-> Use columbo to trace the CSV import flow from the CLI entry point through parsing,
-> validation, and persistence. Read the project instructions and README first.
-> Show the main modules and data flow, explain what happens on a malformed row,
-> and cite the code and tests supporting your explanation. Do not edit files.
-
-The agent can load `columbo prime understand`. Expect a source-backed explanation,
-a small diagram when useful, and explicit gaps. This gives you a focused starting
-point for a change.
-
-For a broader investigation, ask:
-
-> Use columbo to audit this repository for correctness. Map its architecture,
-> trace the main execution paths, and report reproducible findings. Distinguish
-> modules you traced, sampled, and did not inspect. Do not implement fixes yet.
-
-That uses `columbo prime audit`. **Audit covers existing code; review covers a
-selected change.** `packet HEAD` only packages the latest commit, not the repository.
-
-### 2. Implement a change with clear completion criteria
-
-**Situation:** An importer retries permanent failures and wastes time.
-
-> Use columbo to change the importer so it retries transient network failures at
-> most three times and immediately reports validation failures. Trace the current
-> behavior first. Add appropriate tests for retry exhaustion and validation
-> failure, run the relevant checks, and review the final diff. Explain any
-> remaining risks with file references.
-
-The agent loads `columbo prime work`, investigates, implements, verifies, and
-reviews consequential changes. Expect the changed behavior, actual check results,
-and unresolved issues. A small fix may only need the ordinary diff; a repetitive
-change may benefit from compilation.
-
-During work, ask “Where are we? What needs my attention?” You can also name a
-relevant specialist skill in the same request. The agent loads that guidance;
-Prime itself does not fetch skills or execute the task.
-
-### 3. Understand or review a change before committing
-
-**Situation:** You have staged changes and want to know what could break.
-
-For a quick local view:
-
-```sh
-columbo -look -staged
-```
-
-For an explanation in your current agent session:
-
-```sh
-columbo -prompt -staged > /tmp/columbo-staged-review.md
-```
-
-Then ask:
-
-> Read /tmp/columbo-staged-review.md and use columbo to review these staged changes.
-> Inspect the original diff, relevant callers, and tests. Explain the behavior
-> changes, report concrete defects with triggering conditions, and distinguish
-> checks you ran from checks you recommend. Do not change files.
-
-Expect findings tied to the inspected snapshot and source evidence. The Markdown
-packet contains the full diff, its SHA-256, and its byte count. It does not contain
-all surrounding source or prove that tests passed. In a session with repository
-access, the agent can inspect the missing context.
-
-Choose the right source before reviewing:
-
-| Scope | Original view | JSON planning packet |
-|---|---|---|
-| Latest commit | `columbo -look HEAD` | `columbo packet HEAD` |
-| Branch changes since its merge base with `main` | `columbo -look main...HEAD` | `columbo packet main...HEAD` |
-| Staged changes | `columbo -look -staged` | `columbo packet --staged` |
-| Unstaged tracked changes | `columbo -look -w` | `columbo packet --worktree` |
-| Selected paths | `git diff -- src/cli/ \| columbo -look` | `git diff -- src/cli/ \| columbo packet --stdin` |
-
-Replace `main` and the example path with your actual base branch and scope.
-Staged and unstaged inputs are separate. Ordinary Git diffs omit untracked files;
-stage specific new files when their contents should be included, or inspect them
-separately and disclose that coverage.
-
-### 4. Make a repetitive diff easier to read
-
-**Situation:** A refactor moves functions and repeats the same mechanical edit
-across many files. You want to see consequential changes without asking a model
-to rewrite code from memory.
-
-Run this from the target repository, keeping artifacts outside the reviewed diff:
-
-```sh
-review_dir=$(mktemp -d)
-columbo packet HEAD > "$review_dir/packet.json"
-printf '%s\n' "$review_dir"
-```
-
-Give the printed directory to your current agent:
-
-> Read packet.json in that directory, including data.instructions,
-> data.numbered_diff, data.plan_schema, and data.selection_rubric. Inspect relevant
-> source. Start from data.plan_template and write plan.json beside the packet.
-> Keep consequential behavior and uncertain changes; remove mechanical repetition.
-> Use the packet's original numbered-diff coordinates. Compile the plan, repair
-> rejected operations without modifying the packet, and explain the reading view
-> alongside the original diff. Do not claim compilation proves correctness.
-
-The compile command, using the same shell variable, is:
-
-```sh
-columbo compile --packet "$review_dir/packet.json" --plan "$review_dir/plan.json" > "$review_dir/result.json"
-node -e 'const r=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")); if(!r.ok) { console.error(r.error); process.exit(1); } console.log(r.data.summary); console.log(r.data.smart_diff);' "$review_dir/result.json"
-```
-
-You get `data.summary`, `data.smart_diff`, transformation statistics, and explicit
-guarantees and warnings. The agent selects what matters; the compiler checks the
-allowed transformations against the saved diff. Plans use **1-based diff line
-numbers**, not source-file line numbers. A packet and its plan can be compiled
-outside the original checkout, with no provider credentials.
-
-The result is a reading aid, **not an applyable patch**. Imports are always
-removed. Valid compilation does not establish that the selection preserved every
-important behavior; correctness review still needs the original diff and source.
-
-### 5. Hand work from Claude Code to Codex, or resume tomorrow
-
-**Situation:** One agent implemented a change and another will review or finish it.
-
-Ask the implementing agent:
-
-> Leave a columbo handoff for the next session. Include the repository path, goal,
-> acceptance criteria, branch and HEAD, dirty and untracked files, relevant source,
-> actual checks and results, open findings, and the next concrete action. Separate
-> agreed work from optional ideas. Give me one self-contained prompt.
-
-Then ask the next agent:
-
-> Use this handoff to continue. Verify the current snapshot before trusting earlier
-> results. Review the original diff and relevant source yourself, and recheck any
-> findings affected by subsequent edits.
-
-Expect an agent-written account of the actual state. columbo does not automatically
-transfer conversation history or provide persistent memory. A separate reviewer
-only adds independent evidence if it inspects the code itself; changing vendors
-is optional.
-
-### 6. Explain failure and recovery visually
-
-**Situation:** A retry or cancellation path is difficult to reason about.
-
-> Use columbo to show the importer as a statechart, including validation failure,
-> transient failure, retries, cancellation, and recovery. Cite the code behind
-> each important transition and identify assumptions or omitted behavior.
-
-The agent follows the [statechart guide](prime/optional/statecharts.md), using
-show-me when useful. Charts distinguish proposed behavior, implementation-traced
-behavior, and actual model-checking results. columbo does not automatically extract
-state machines or run a model checker.
-
-## Preserve intent and evidence between sessions
-
-columbo can now store explicit task intent, source-bound evidence, and decision
-history locally in Git metadata. Start with:
-
-```sh
-columbo status --json
-columbo snapshot --file src/cli/main.ts --json
-columbo record-schema --json
-```
-
-`status` creates no files. `snapshot` hashes selected files without storing source
-text. `columbo record --file RECORD.json` explicitly saves an immutable intent,
-evidence claim, or decision. A later `status --task ID` identifies changed or
-unavailable supporting files and unresolved decisions. Status defaults to a compact
-summary; add `--details` to read full claims and decision history. Use the
-[complete record examples](docs/cli-reference.md#local-intent-evidence-and-decisions)
-to start a task and save evidence.
-
-Claims remain attributed assertions. Unchanged hashes mean supporting bytes match;
-they do not prove correctness or that tests ran. Decisions preserve reported human
-judgment without granting execution permissions. State stays local to the worktree
-and is not automatically shared through Git or loaded into every agent session.
-
-## Optional model execution
-
-### Automatic API abridging
-
-When you explicitly want columbo to run the model/tool/compiler loop:
-
-```sh
-columbo abridge -json -model MODEL HEAD
-```
-
-Replace `MODEL` with an API model ID available to your account and configure the
-appropriate provider key. `claude-*` routes to Anthropic, `grok-*` to xAI, and
-other IDs to OpenAI. Large diffs can be chunked automatically. The engine can
-request surrounding source through read-only file and search tools.
-The diff and requested context are sent to the selected provider.
-
-| Configuration | Meaning |
+| Activity | Use it when |
 |---|---|
-| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `XAI_API_KEY` | Credentials for the selected native provider |
-| `COLUMBO_MODEL` | Default model; overrides `MEAT_MODEL`. Explicit `-model` wins |
-| `COLUMBO_CACHE` | Cache directory; overrides `MEAT_CACHE`, including an empty value that disables caching |
-| `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `XAI_BASE_URL` | Provider endpoint overrides |
-| `-no-cache` | Skip cached reads and recompute; still write the result to cache |
+| `columbo prime understand` | Explain behavior from real source, without changing it |
+| `columbo prime work` | Implement a change, check it, then review the final diff |
+| `columbo prime review` | Review a selected diff with evidence |
+| `columbo prime audit` | Investigate a whole repository and report coverage |
+| `columbo prime converge` | Fix evidenced findings through Work |
 
-The default cache is `~/.meat`. Its key includes the diff, model, and rubric/compiler
-identity; surrounding source is not part of that key. Recompute when changed
-context makes a cached result inappropriate. columbo does not load `.env`
-automatically; explicitly use `node --env-file=.env /absolute/path/to/dist/cli/main.js …`
-when intended. Subscription logins are separate from API credentials. Gemini is
-not a native provider. Supported exe.dev environments can use a managed gateway;
-see [provider contracts](specs/providers.md).
+For work that must survive a session restart, record intent and evidence
+explicitly:
 
-### A fresh subscription CLI explanation
+```sh
+columbo snapshot --file src/importer.ts --file test/importer.test.ts --json
+columbo record --file intent.json
+columbo status --json
+```
 
-If the respective CLI is installed and signed in:
+Records live in worktree Git metadata (`columbo-state-v1`), are immutable, and
+change to `needs_recheck` when their supporting bytes change. They are attributed
+assertions, not proof, test receipts, or permission to act. `columbo status
+--details` shows claims and decision history. `columbo help record-schema`
+documents the input contract.
+
+`columbo setup` previews project-local skills for Codex and Claude Code; `--yes`
+installs columbo, meat and show-me without overwriting existing files.
+
+## Review a change
+
+Run columbo from the repository you want reviewed. Pick the row that matches what
+you already have:
+
+| You have | Run | You get |
+|---|---|---|
+| Claude Code or Codex open | `/meat HEAD` in Claude Code, `$meat explain HEAD` in Codex | The open session explains the change |
+| A Codex or Claude subscription | `columbo -agent codex HEAD` or `columbo -agent claude HEAD` | A fresh read-only review in your terminal |
+| Another agent or chat, such as Grok | `columbo -prompt -o review.md HEAD` | A review packet to attach or paste |
+| Nothing set up yet | `columbo -look HEAD` | The change's shape, size and full diff, offline |
+| An API key | `columbo HEAD` | A compiled, abridged reading diff ([API abridging](#api-abridging-optional)) |
+
+Only the last row needs an API key. Run without one, columbo says so and lists
+the commands that need none for the same change.
+
+### Use an already open agent session
+
+In Claude Code type **`/meat HEAD`**; in Codex type **`$meat explain HEAD`**. You
+can also ask “Use columbo to explain my staged changes.” The skill collects a
+packet and explains it in your current session, using that session's
+subscription allowance. Packet creation needs no API key and launches no
+additional agent. When a visual helps, the skill adds a small call tree, code
+sketch or diagram.
+
+`npm run setup` installs the skill. To install only the skill, run
+`npm run skill:install -- all`, or `codex` or `claude` instead of `all`. The
+installer writes a personal skill to `~/.agents/skills/meat/` and/or
+`~/.claude/skills/meat/`, binding it to this checkout's absolute source entry.
+The personal launcher reads the canonical skill on each use, so instruction
+updates apply without reinstalling. Keep the checkout and its dependencies
+available; rerun after moving it or changing discovery metadata. Open a new CLI
+session, then invoke meat from the repository you want reviewed. This installer
+runs from the source checkout, not an npm package installation.
+The installer refuses linked personal meat directories/files to avoid altering
+their targets. Use a regular personal skill directory.
+
+A plugin can distribute a skill with other components. This repository ships
+the standalone skill and installer; it does not yet ship a plugin package.
+
+### Run a fresh subscription review
+
+Sign in once with `codex login` (using ChatGPT) or `claude auth login`, then:
 
 ```sh
 columbo -agent codex HEAD
-columbo -agent claude HEAD
+columbo -agent claude main...HEAD
 ```
 
-Choose one command. columbo checks subscription login and removes API-routing
-credentials from the child environment; it does not fall back to API abridging.
-The fresh process uses network access and subscription allowance. Its output is
-an agent-authored explanation, not a compiled reading diff.
+Inside this checkout, `npm run review -- HEAD` and `npm run review:claude -- HEAD`
+do the same. This launches a fresh review and prints the finished explanation in
+your terminal, with a small call tree, code sketch or diagram where one helps.
+While it runs, columbo shows the elapsed time and hides the agent's own log, which
+includes its session header and the echoed packet. Add `-verbose` to stream
+that log; if the review fails, columbo prints the end of it. `-o review.md` saves
+the explanation instead of printing it.
 
-These runners are instructed not to modify files or run tests. Codex uses a
-read-only sandbox; Claude is restricted to Read/Grep/Glob. Host CLI versions must
-support the adapter flags. See [runner details and verification limits](docs/agent-workflow.md).
-For implementation and test execution, use your normal current agent session.
+Meat checks the CLI's subscription login before sending the diff. It removes
+API credentials and provider-routing variables from the child environment and
+never falls back to its API backend. Codex runs with a read-only sandbox and
+without user configuration; Claude loads no user/project settings or MCP servers
+and is limited to Read/Grep/Glob. Login storage stays with the agent CLI.
+These fresh reviews use your subscription allowance and require network access.
+The result is an agent-written explanation, not an engine-compiled reading diff.
 
-## How columbo is built
+Requires CLI versions supporting the flags in `src/cli/agent.ts` (Codex 0.153.4
+was live-tested). Update older CLIs if they report an unsupported option. Grok
+native subscription execution is not implemented; use the packet instead.
+Plain `columbo HEAD` still selects the original API abridger: use **`-agent codex`**
+for subscription execution.
 
-The active implementation is a TypeScript CLI with no production npm dependencies.
-Node provides process execution, filesystem access, hashing, and HTTP support.
-The Go tree is retained as a migration reference.
+### Give the packet to another agent
 
-```mermaid
-flowchart TD
-    CLI[CLI entry and command routing] --> Prime[Prime: local workflow instructions]
-    Prime --> Session[Current agent investigates, works, and reviews]
-    CLI --> Git[Git revision, index, worktree, or stdin diff]
-    Git --> View[Original view or Markdown explanation packet]
-    Git --> Packet[JSON snapshot: hash, numbered diff, schema]
-    Packet --> Plan[Current agent writes a selection plan]
-    Plan --> Compile[Validate and compile against saved diff]
-    Git --> API[API model loop and read-only context tools]
-    API --> Compile
-    Compile --> Result[Selective reading diff and statistics]
-    API --> Cache[Local result cache]
-```
-
-| Layer | Responsibilities and source |
-|---|---|
-| CLI | [`main.ts`](src/cli/main.ts) resolves Git/stdin input and dispatches modes; [`render.ts`](src/cli/render.ts) handles terminal/JSON output |
-| Agent workflow | [`workflow.ts`](src/cli/workflow.ts) loads local Prime documents; [`setup.ts`](src/cli/setup.ts) installs project skills |
-| Portable bridge | [`bridge.ts`](src/cli/bridge.ts) creates snapshots, validates packet/plan identity, and calls the production compiler |
-| Abridging engine | [`meat.ts`](src/meat/meat.ts) runs the bounded model/tool loop; [`chunk.ts`](src/meat/chunk.ts) divides large diffs |
-| Compiler | [`editplan.ts`](src/meat/editplan.ts), [`plan.ts`](src/meat/plan.ts), and [`diff.ts`](src/meat/diff.ts) validate operations and produce source-constrained output; imports, moves, and elisions have dedicated modules |
-| Integrations | [`provider.ts`](src/meat/provider.ts) selects providers; [`tools.ts`](src/meat/tools.ts) supplies read-only context and plan tools; [`agent.ts`](src/cli/agent.ts) launches subscription CLIs |
-| Cache and contracts | [`cache.ts`](src/cli/cache.ts), [specifications](specs/INDEX.md), unit/CLI tests, and frozen Go conformance vectors |
-
-The core data flow uses `Uint8Array` diff bytes. An API `Request` carries the diff
-and optional repository root; a portable packet captures exact diff text, hash,
-compiler identity, numbered lines, and plan schema. A plan describes removals,
-replacements, and folds in original coordinates. A compiled result contains the
-reading diff, summary, and statistics. The compiler constrains transformations;
-the model or agent supplies the judgment about relevance.
-
-## Limits and troubleshooting
-
-| Symptom or question | Explanation / next step |
-|---|---|
-| “I ran `prime work` and nothing changed” | Prime prints instructions. Ask your current agent to follow them for a concrete task |
-| Empty input or unexpected source | Use explicit `HEAD` for legacy commands in agent shells; redirected stdin may otherwise be selected. Check whether changes are staged or unstaged |
-| Flags after a revision fail | Legacy flags go before revisions: `columbo -prompt HEAD`. New `packet` options can appear after revisions |
-| `snapshot_mismatch` | Generate a new plan from the correct packet. Do not relabel an old plan with a new hash |
-| `compiler_mismatch` or `packet_integrity` | Regenerate the packet and plan with the current installation; keep packet contents unchanged |
-| `invalid_plan` | Read `error.message` and `error.next_action`; repair the plan using original diff coordinates |
-| Packet exceeds the limit | Offline packets accept at most 400 KiB of UTF-8 diff bytes. Narrow the input and disclose exclusions, or explicitly choose API chunking |
-| New files are missing | Ordinary Git diffs omit untracked files; include them deliberately or inspect separately |
-| Setup reports conflicts | Preserve or move conflicting skills and preview again. Setup never force-overwrites them |
-| Subscription login is unconfirmed | Sign in with the selected host CLI and retry; columbo does not substitute API access |
-| A branch has the same name as a command | Disambiguate with `columbo -- <revision>` |
-
-`packet` and `compile` return JSON envelopes with `schema_version`, `command`,
-`ok`, `data`, and `error`. Read the error body even on nonzero exit. Exit codes
-are 0 for success/help, 1 for runtime/validation failure, and 2 for usage errors.
-The API abridger retains its separate JSON format. Use direct Node commands, or
-`npm run --silent`, when redirecting output so npm banners do not pollute artifacts.
-
-A hash identifies diff bytes, not authorship, surrounding source, or test results.
-Packets contain source code. A valid reading diff is selective and cannot serve
-as a correctness sign-off. Prime's review guidance is followed by the agent;
-it is not an enforced merge gate. PACT is an [optional policy](prime/optional/pact.md),
-with [recorded provenance](prime/provenance.json), rather than a runtime dependency.
-Show-me is complementary visual guidance.
-
-## When is it useful?
-
-For humans, columbo is most useful when a change needs explanation, a large diff
-needs a readable first pass, or work is moving between sessions. For agents, the
-strongest concrete features are explicit scope, portable snapshots, structured
-errors, and a deterministic compiler shared by offline and API workflows.
-
-An ordinary `git diff` remains the simplest choice for a small edit. A capable
-agent can already investigate and review code; columbo adds reusable conventions
-and tooling, while the quality of its conclusions still depends on the agent.
-The workflow alone does not guarantee better reasoning. Try it on a repetitive
-refactor and a real handoff, and judge the result against the original source.
-
-## Development and further reading
+`-prompt` exports the full diff with review instructions:
 
 ```sh
-npm run check
-npm run build
+columbo -prompt -o review.md HEAD
 ```
 
-`check` runs strict type-checking, offline tests, and frozen conformance vectors.
-Provider tests use mock servers and require loopback listeners, not live keys.
-Edit `src/`, not generated `dist/`. Preserve legacy wire kinds (`meat.packet`,
-`meat.compiled`), engine protocol, and `MEAT_*` compatibility variables.
+Then ask the agent: **“Read `review.md`, inspect relevant source, and explain
+the important changes and review risks.”** For Grok chat, attach or paste the
+file. `-prompt` does not call an agent, use a login, or incur a model call
+itself. It exports the full diff with review instructions, not an abridgment.
+The resulting explanation is agent-authored and does not use columbo's edit-plan
+compiler. A relative `-o` path lands in the current directory, which is usually
+the reviewed repository; write it elsewhere if you don't want it there.
 
-- [Full CLI reference](docs/cli-reference.md): command details, sources, providers, and runners.
-- [columbo Prime](prime/README.md): activities, specialist guidance, status, and handoffs.
-- [Agent workflow](docs/agent-workflow.md): review practices and integration details.
-- [AGENTS.md](AGENTS.md): repository rules and code map.
-- [Maintained decisions](docs/decisions.md) and [specifications](specs/INDEX.md): behavior contracts and evidence.
-- [Apache-2.0 license](LICENSE).
+Prefer `-o` to shell redirection. Windows PowerShell 5.1's `>` adds a byte-order
+mark and converts line endings, and `npm run` prints banners unless invoked
+with `--silent`. `-o` writes exactly the bytes stdout would carry, only after
+the command succeeds. It works with every output: `-look`, `-json`, the
+abridged diff, observation JSON and `-agent`.
+
+## Choose the diff
+
+Flags go **before** the revision. If one comes after, columbo stops and shows the
+corrected command. Use explicit `HEAD` in agent shells and CI; with no source
+argument, redirected stdin may be selected instead.
+
+```sh
+columbo -look HEAD           # latest commit
+columbo -look main...HEAD    # branch changes since merge base
+columbo -look -staged        # index
+columbo -look -w             # unstaged tracked files
+git diff | columbo -prompt   # stdin
+```
+
+Replace `-look` with `-prompt` to export a packet, or remove it to abridge.
+`-staged` and `-w` cannot combine with each other or with a revision.
+`-prompt` cannot combine with `-look` or `-json`.
+
+For bounded offline inspection, use the versioned observation commands:
+
+```sh
+columbo -inventory -page-size 20 HEAD
+columbo -evidence h:123 -snapshot <snapshot-sha256> -max-bytes 8192 HEAD
+columbo -plan HEAD
+columbo -capabilities
+```
+
+Choose an actual entry ID and snapshot SHA-256 from the inventory before
+expanding evidence. `-cursor <page.next>` continues the same source, operation
+and page limit; changed evidence is rejected. Inventory and plan optionally
+accept `-snapshot` too. Flags precede the revision. Inventory/plan pages default
+to 20 entries (maximum 100); evidence pages default to 8192 bytes (maximum
+16384). Each success writes one `meat.observe` version 1 JSON document. Evidence
+uses base64 to preserve exact raw bytes, with original diff ranges whose ends
+are exclusive. Runtime diagnostics go to stderr and exit 1; flag errors exit 2.
+
+These commands make no model, login, gateway or cache call. Capabilities probes
+no source. Committed snapshots resolve objects once and identify before/after
+trees; their controlled diff omits commit messages. Mutable inputs retain diff
+bytes with unavailable context and unverified consistency; stdin provenance
+stays unknown. Snapshot-bound context tools remain future work. Planning applies
+API partitioning to the captured observation bytes, with unknown model calls,
+tokens and cost. It does not promise the same partitions for legacy execution of
+the same Git selector, whose commit envelope can differ; current
+execution tools still read the live checkout. Observation flags cannot combine
+with legacy output, agent, model or cache flags. See the
+[observation contract](specs/observe.md) for source identity and pagination.
+Untracked files are not included by `git diff`. Empty input exits 1; it is not
+a successful review. Help exits 0; flag parsing errors exit 2. Source-selection
+conflicts and other runtime failures exit 1.
+
+From another repository without `npm run setup`, use an **absolute CLI path** and
+keep the shell in the repository being reviewed:
+
+```sh
+cd /path/to/your-repo
+node /path/to/columbo-review/dist/cli/main.js -prompt -o review.md main...HEAD
+```
+
+## API abridging (optional)
+
+The built-in providers read `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or
+`XAI_API_KEY`. They do not read Codex/Claude Code/Grok subscription logins.
+Choose an API model available to your account using `-model` or `MEAT_MODEL`:
+`claude-*` routes to Anthropic, `grok-*` to xAI, and other IDs to OpenAI.
+Set a Claude model explicitly when using an Anthropic key.
+
+The CLI does **not** load `.env` automatically. To use a local `.env` containing
+your provider key and `MEAT_MODEL`:
+
+```sh
+node --env-file=.env dist/cli/main.js HEAD
+```
+
+Abridging sends the diff and potentially requested surrounding source to the
+selected provider. Large diffs are chunked; each chunk can require model calls.
+Engine limits apply per chunk; the CLI currently exposes no aggregate time,
+call or token budget. Results do not identify fallback or chunk validation
+coverage. Repository tools read the current checkout, even for historical or
+staged inputs; inspect the appropriate revision when that difference matters.
+
+Results are cached in `~/.meat`; `MEAT_CACHE=/some/path` relocates the cache and
+`MEAT_CACHE=` disables it. `-no-cache` skips reads but still updates the cache.
+Neither `-look` nor `-prompt` contacts providers or uses this cache. Its key
+covers rubric/compiler protocol, model and diff text, but excludes surrounding
+source and provider routing. Use `-no-cache` to recompute when those have changed.
+Cached token totals describe the original computation.
+
+## Is it worth using?
+
+Use columbo when large diffs recur and a repeatable, compiled reading diff saves
+review time. It has a deterministic compiler and offline conformance fixtures,
+but abridging remains selective: keep the original diff available for review.
+For occasional explanations, your existing agent plus `-prompt` is a simpler
+starting point. Try a few real changes before adding API automation.
+
+Visual explanations are built in. The columbo and meat skills and `-agent` reviews add the
+smallest useful pseudocode, call tree, before/after sketch or Mermaid diagram,
+using no platform-specific commands, so they behave the same on Linux, macOS
+and Windows. A separate visual skill, such as HumanLayer's
+[show-me](https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md),
+can be installed from its upstream source; columbo neither bundles nor requires it.
+
+See [the agent workflow](docs/agent-workflow.md) for GitHub/GitLab use and durable
+project knowledge. Codex discovers `AGENTS.md`; Claude Code loads it through
+`CLAUDE.md`. The canonical meat skill lives in `.claude/skills/meat/`; synchronize
+the tracked `.agents/skills/` and `.grok/skills/` copies with `npm run skill:sync`
+after editing it. Grok skill discovery depends on your client; plain chat can
+use the exported packet. The installer supports Codex and Claude Code.
+
+## Development
+
+```sh
+npm run check       # strict source type-check + tests and conformance vectors
+npm run build       # distributable JavaScript, declarations, source maps
+npm pack            # rebuilds before packaging; does not publish
+```
+
+Tests use local mock HTTP servers and need no live API keys. A sandbox must
+allow loopback listeners for the full suite. See [AGENTS.md](AGENTS.md) for the
+module map and invariants, and [decisions](docs/decisions.md) for maintained
+knowledge. [The roadmap](docs/roadmap.md) owns proposed work.
+Git attributes preserve the raw bytes of conformance fixtures and corpus diffs
+across checkouts, including Windows with `core.autocrlf=true`.
+`TODO.md` and `migration/` retain historical porting context.

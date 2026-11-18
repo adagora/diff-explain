@@ -1,5 +1,22 @@
 # cache
 
+## Current scope and identity limits
+
+This cache is used by API abridging. Offline look/packet and fresh subscription
+reviews bypass it. The key binds rubric/compiler protocol, model and diff
+text; it excludes repository/context identity and provider endpoint routing.
+A hit therefore cannot establish that surrounding source is unchanged.
+Cached token counts report original computation usage.
+
+The current decoder accepts field-incomplete objects and even JSON null as
+zero-valued results. It does not validate artifact provenance. Cache I/O failures
+are silently absorbed. These are legacy behaviors, not the proposed validity
+rules in [agent interface](agent-interface.md).
+Evidence: [cache.ts](../src/cli/cache.ts), [cache tests](../test/cli/cache.test.ts),
+[run orchestration](../src/cli/main.ts).
+
+## Historical Go baseline
+
 > Status: stage 1 ✅ | stage 2 ✅
 > Go sources: `cmd/meat/cache.go`
 > Go tests: `cmd/meat/cache_test.go` (8 tests — key derivation, round-trip
@@ -11,9 +28,10 @@
 The `~/.meat` result cache: a deterministic key derived from a diff, a
 model id, and a rubric hash, mapped to a stored `Result` on disk, so that
 re-running meat on the same inputs against the same compiler protocol skips
-the model call entirely. Caching is opt-out (`MEAT_CACHE=""` or `-no-cache`)
-and fails open — a cache that can't be read or written never blocks meat
-from producing an answer.
+the model call entirely. `MEAT_CACHE=""` disables reads and writes;
+`-no-cache` skips reads and still writes the new result. Cache I/O failures
+are ignored, so a cache that cannot be read or written does not itself block
+answer production.
 
 ## Vocabulary
 
