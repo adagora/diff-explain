@@ -2,6 +2,156 @@
 
 ## TypeScript additions (current behavior)
 
+### Project skill setup
+
+`setup [--agent codex|claude|both] [--project DIR] [--dry-run|--yes] [--json]`
+previews a project-local skill installation. The default agent is both and the
+default project is the current working directory. A positional agent name is
+also accepted. `--project=DIR` and `--agent=NAME` are supported. Duplicate selectors,
+unknown options, invalid agents, and `--yes` with `--dry-run` exit 2. The target
+must be an existing accessible directory; its canonical path is reported.
+
+Setup always emits the versioned JSON envelope with `command:setup` and
+`data.kind:columbo.setup`. Data includes project, agents, mode, readiness, the
+absolute CLI launcher, per-file actions/reasons, created paths and next action.
+Preview does not create files or directories. A conflicting preview exits 0
+because planning succeeded, with `ready:false`. Applying that plan exits 1 with
+`setup_conflict`, null data and no writes when preflight detects a conflict.
+
+Application requires `--yes`. It copies columbo, Meat compatibility and show-me
+SKILL.md files into `.agents/skills/` for Codex and `.claude/skills/` for Claude.
+columbo and Meat copies receive a project-installation section after frontmatter,
+with an absolute, shell-quoted Node/CLI launch line for the running installation.
+The show-me copy is unchanged. Sibling skill references remain available for each
+host. Source and built CLI invocations produce the corresponding .ts/.js launcher.
+The installed Node and CLI paths must remain available.
+
+Matching files are unchanged, preserving their timestamps. Files already resolving
+to the bundled source are recognized as bundled and left untouched, including
+this checkout's own discovery links. Other differing files, directories or
+symlinks are conflicts. Symlink/non-directory parents below the project root
+are refused. All targets are inspected before application; new files are opened
+exclusively and never replace an existing path. Parents and targets are checked
+again during application. A later filesystem change/failure can leave partial
+new files or directories; errors identify created files and advise a fresh
+preview. Setup is not a transaction across all skill files.
+
+No force-overwrite, automatic upgrade, global skill installation, host-profile
+modification or npm postinstall behavior is provided. Moving/upgrading the CLI
+may produce conflicts that the user resolves explicitly. Setup changes neither
+AGENTS.md nor CLAUDE.md and reads no API credentials or target source. It makes
+no model/network call and does not publish anything. A fresh agent session may
+be needed for discovery; direct Prime loading remains available.
+
+Typed failures include `setup_path`, `setup_assets`, `setup_conflict`,
+`setup_changed` and `setup_write`. Exit 1 is a validation/runtime failure; usage
+errors use exit 2 and help uses exit 0. `capabilities` declares setup as mutating
+with preview default, project scope, `--yes` application and no overwrite.
+
+Evidence: `src/cli/setup.ts`, `src/cli/errors.ts`, `test/cli/setup.test.ts`.
+
+### columbo branding and local workflow
+
+The package is `columbo-review`, with `columbo` as the bin and `meat` as a
+compatibility alias to the same entry point. CLI help and new command guidance
+use columbo. Existing engine/rubric hashes, `meat.packet` / `meat.compiled` kinds,
+legacy diagnostics, API JSON, and the default `~/.meat` cache are preserved.
+At CLI startup `COLUMBO_MODEL` overrides `THREAD_MODEL`, then `MEAT_MODEL`, and
+`COLUMBO_CACHE` overrides `THREAD_CACHE`, then
+`MEAT_CACHE` whenever defined, including empty strings. Explicit model flags
+still win. Provider credential names remain unchanged.
+
+`prime [understand|work|review|audit|converge] [--json]` is an offline loader, defaulting to
+orientation. Plain output is Markdown. JSON uses the normal versioned envelope
+with `command:prime` and data containing `kind:columbo.workflow`, schema version,
+activity (`orient` or the selected name), `scope`, `execution:current_session`,
+`model_called:false`, resource paths, instructions, and next action. It reads
+packaged `prime/README.md` plus the selected activity. Review, Audit and Converge
+also load `prime/review-policy.md`. Converge additionally loads Work before its
+compatibility instructions and has no default round cap. Scopes are `orientation`, `behavior`,
+`implementation`, `diff`, `repository`, and `findings` respectively. Capability
+discovery includes the activity-to-scope map. Optional integrations, provenance
+and historical references are never loaded implicitly. It does not inspect Git,
+call a model, run tasks/checks, install hooks or execute downloaded instructions.
+Invalid activity names/options are structured usage errors (exit 2); missing
+packaged files produce a structured runtime error (exit 1). Help exits 0.
+`columbo -- prime` disambiguates a Git revision named prime.
+
+The workflow guides the current agent through relevant code understanding,
+scoped implementation, actual checks and proportional review. It is instructional,
+not mechanically enforced orchestration. Current-session model access is default;
+API calls, fresh agent processes, multi-vendor review, PR writes and merges need
+their existing authorization. This does not change the -agent runner's narrower
+tool/test restrictions. Work checkpoints can select a compiled reading diff for
+complex changes without requiring one for every edit. Handoffs distinguish source
+evidence, snapshot identity, checks actually run and unresolved uncertainty.
+
+Evidence: `src/cli/workflow.ts`, `src/cli/brand.ts`, `test/cli/workflow.test.ts`,
+`.claude/skills/columbo/SKILL.md`, and the local `prime/` activity documents.
+
+### Portable plan bridge (JSON contract v1)
+
+`packet`, `compile`, `capabilities`, and `guide` are command verbs handled before
+legacy flag parsing. `help <verb>` and `<verb> --help` print command help to
+stdout and exit 0. `help` prints the main help. `robot-docs guide` aliases `guide`.
+`abridge` removes its own verb then delegates to the unchanged API CLI path,
+including provider selection, chunking, cache behavior and legacy JSON output.
+Literal revisions matching these verbs remain accessible through `meat -- REV`.
+
+`packet [REV|RANGE|--staged|--worktree|--stdin]` defaults to explicit HEAD even
+when stdin is redirected. Sources are mutually exclusive; `-staged`, `-w`, and
+`--w` are source aliases. Options may follow the revision. `--` ends option
+parsing. Input stays bytes until the JSON boundary. Packets require nonempty,
+supported, structurally valid UTF-8 diffs of at most 409600 bytes. BOMs, CRLF,
+Unicode, and missing terminal newlines round-trip exactly in `input.diff`.
+No provider, cache, or compiler submission is invoked during export.
+
+`packet` and `compile` always emit one JSON envelope, optionally accepting
+`--json`: `{schema_version:1,command,ok,data,error}`. Successful replies have
+`error:null`; failed replies have `data:null` and
+`error:{kind,message,next_action}`. Exit 0 means success/help, 1 means runtime or
+validation failure, and 2 means usage failure. Callers must inspect stdout even
+on nonzero exit. Parse errors do not dump raw artifacts. `guide` emits text by
+default or `{guide}` in the envelope with `--json`. `capabilities` always emits
+JSON, including installed tool version, contract version, commands, error kinds,
+exit dictionary, plan schema, limits, and API environment names. Discovery does
+not require a repository, credentials or network.
+
+Packet `data` includes `kind:meat.packet`, schema version, `input` (source label,
+raw diff string, byte length and SHA-256), compiler protocol/rubric identity,
+numbered diff, shape counts, file-section coordinates, move hints, concise offline
+instructions, a separate detailed `selection_rubric`, plan schema, template, and
+next action. Offline instructions override the rubric's API tool terminology.
+A source label such as
+HEAD is descriptive; the exact raw diff hash is the snapshot identity. No
+surrounding-source snapshot, author authentication, or reviewed-file coverage
+claim is implied. The schema is derived from the production submit schema,
+with required `schema_version:1` and `input_sha256` fields added. All original
+submit arrays and summary are required; unknown keys and non-safe-integer
+coordinates are rejected at every level before compilation.
+
+`compile --packet FILE --plan FILE` accepts paths or `-` for stdin (at most one
+stdin input), in either option order, also as `--packet=FILE`/`--plan=FILE`.
+Regular file artifacts and streamed stdin artifacts have a 16 MiB limit.
+Compilation checks the successful packet envelope, schema version, raw diff
+hash/size, numbered coordinates, compiler protocol/rubric identity, and the
+plan's matching input hash. It revalidates input bounds/layout then delegates
+to the existing production submit/compiler pipeline. No model, cache, current
+checkout, or source read is involved. Rejected plans receive structured error
+kind and repair instructions; retries always use original coordinates. Unique
+one-edit option typos (including transpositions) receive a suggested spelling;
+they never trigger execution.
+
+Successful compilation returns `kind:meat.compiled`, schema version, input hash,
+compiler identity, summary, `smart_diff`, production statistics, explicit
+guarantees, and warnings. Only transformation validity is claimed. Semantic
+completeness, test execution and source-context capture are false. Mandatory
+import removal and all existing compiler invariants remain unchanged. This is
+a reading artifact, not an applyable patch or a merge/correctness verdict.
+
+Evidence: `src/cli/bridge.ts`, `test/cli/bridge.test.ts`. Legacy CLI behavior and
+frozen conformance vectors remain the baseline below.
+
 `-agent codex|claude` launches a fresh subscription CLI review using the same
 diff sources. It checks login before launch, sends the packet and installed
 show-me guidance via stdin, and forwards output. It never enters the meat
@@ -672,3 +822,71 @@ value/unit/boundary schema for numeric limits.
   restricts `meat` to Unix-like platforms, so its `func isatty(fd
   uintptr) bool { return false }` fallback is live, reachable code, not
   a vestige.
+
+### Workflow composition
+
+“Use columbo to <outcome>” is the agent-facing entry point. The agent selects an
+activity and reads requested or relevant specialist guidance; Prime does not
+fetch, install or execute extensions. URL-based instruction loading resolves
+relative resources at the same revision. Audit selects a domain, distinguishes
+leads from findings and reports coverage, root cause and recommended fixes.
+Native host continuation is optional and explicitly requested; it preserves
+explicit user limits and does not convert an exhausted limit into goal success.
+
+### Optional behavior reading views
+
+Statecharts are agent-authored views within existing activities. The bootstrap
+links `prime/optional/statecharts.md`, distributed through `prime/optional` and
+loaded only when needed; ordinary Prime resources and activity names are unchanged.
+Charts identify proposed, implementation-traced or model-checked evidence, with
+snapshot/source references where applicable, assumptions and omissions. A
+model-checked report requires an actual tool result and distinguishes violations,
+unchecked properties and implementation correspondence. columbo adds no renderer,
+model checker, new activity or compiler guarantee for these views.
+
+
+## Local evidence state (TypeScript)
+
+`status`, `snapshot`, and `record` are offline JSON-envelope commands, using the
+existing 0/1/2 exit semantics. `status [--task ID]` is read-only, reports Git HEAD,
+branch, porcelain-v1 status and explicit records, and does not create a store.
+`snapshot --file PATH` accepts repeated repository-root-relative regular files,
+rejects symlink traversal and root escapes, and emits byte SHA-256 fingerprints.
+`record --file JSON` validates an intent/evidence/decision union, rejects unknown
+fields, and publishes immutable records in worktree-local `--git-path
+columbo-state-v1`. Same-ID same-content submissions are idempotent; conflicting
+content fails. Publication uses an exclusive temporary file and atomic hard link,
+with cleanup, so existing records are never overwritten.
+
+Evidence requires an existing intent and 1-100 supporting file fingerprints that
+match at recording time. Status rehashes supporting files; unchanged bytes yield
+`supporting_inputs_unchanged`, changed/missing/unsafe/unreadable files yield
+`needs_recheck`. Every evidence record exposes `verified_by_columbo:false` regardless
+of basis (source, inference, reported_check). Checks are not executed. Actor labels
+are assertions, not authenticated identities. Unrecorded dependencies/environment
+are explicitly outside freshness guarantees.
+
+Decisions reference an intent and have a question and nullable answer. A new
+record may supersede an existing decision in that task. Unanswered leaves remain
+unresolved. Multiple successors produce explicit conflict IDs. Resolution does
+not authorize execution. No implicit active task, automatic memory promotion,
+state pruning, host goals or hooks are created. Original records remain available.
+
+Records bind the canonical repository path, so a moved checkout fails visibly.
+The store accepts at most 1000 records, each input at most 1 MiB, and each source
+at most 16 MiB. Corrupt records and unknown references fail rather than disappear.
+Capabilities/help expose the commands and their mutation scope; old compiler,
+packet, cache, and legacy CLI contracts are unchanged. Git revisions named status,
+snapshot, record or record-schema can be selected with `columbo -- REVISION`.
+Evidence: `src/cli/state.ts`, `test/cli/state.test.ts`.
+
+
+Status defaults to a summary: evidence IDs, bases, freshness and source statuses,
+plus current decision leaves. Omission counts and an argument-array detail command
+make the missing claim text and superseded history explicit. `--details` returns
+full records; `--task` restricts record scope. Supporting paths share a per-call
+fingerprint cache, and hashing streams bounded files rather than loading all
+source bytes at once. Git observation disables optional index locks. Observations
+are not an atomic repository snapshot across concurrent source changes.
+`record-schema --json` exposes the strict input variants and semantic constraints
+without Git/model access. It is discoverable through capabilities.

@@ -1,0 +1,52 @@
+{
+  "source": "https://github.com/fastxyz/pact",
+  "commit": "72c68ef77a941d2ac6ab4ae4b22319992ddd02e1",
+  "contract_version_observed": "v1.3.0",
+  "inspected_on": "2026-11-17",
+  "license_observation": "No license file in the inspected tree; README license section is TBD.",
+  "reuse": "Process ideas inform independently written columbo guidance. Upstream text and scripts are not vendored.",
+  "local_files": [
+    "review-policy.md",
+    "activities/converge.md",
+    "optional/pact.md"
+  ],
+  "inspected_files": [
+    {
+      "path": "README.md",
+      "sha256": "c3252b1ba6e017942fae4435495897e0190ac8fdedb5e2914675aa66561eb507"
+    },
+    {
+      "path": "CONTRACT.md",
+      "sha256": "3526569f625965ce73698c3879bdeefefd805cafb13ddd1c42caa71109e2ce8e"
+    },
+    {
+      "path": "roles/coder.md",
+      "sha256": "63f95ec8c8513b2f1275766e74c68cc9604a561a87d0f933bce15e6d49bb8403"
+    },
+    {
+      "path": "roles/reviewer.md",
+      "sha256": "5b5afac417488b9a06a6526c1b63a317a2861c109765cb83b7d4a33d35e156d9"
+    },
+    {
+      "path": "commands/code.md",
+      "sha256": "f8186d22768f8eb0a7b91691d56b193a40c187c19224249377ee95c0068eaccf"
+    },
+    {
+      "path": "commands/loop.md",
+      "sha256": "2bb64e72ea8a92182238e0cf4b2de2625fbe01ce22fc536c98f80b979f20d512"
+    },
+    {
+      "path": "commands/review.md",
+      "sha256": "c99e7a4cc41da890bea0a863c85dd50a55cee837cff584cc562f316439f34aa4"
+    },
+    {
+      "path": "commands/land.md",
+      "sha256": "b677fe42a63aae9642c1defc68bce62a4dd15a3c3b4a6caff38756518c067545"
+    },
+    {
+      "path": "commands/merge.md",
+      "sha256": "fcbf1b09b22c1c2435e5ef59f8247e38aef15dca2312b760785cae8c5bb61ef5"
+    }
+  ],
+  "refresh": "Compare a new upstream commit explicitly before updating this pin or local policy. Prime never fetches updates."
+}

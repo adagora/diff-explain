@@ -49,8 +49,8 @@ export async function reviewWithAgent(agent: string, packet: string): Promise<vo
   env["MEAT_AGENT_ACTIVE"] = "1";
   const visualSkill = readFileSync(new URL("../../.claude/skills/show-me/SKILL.md", import.meta.url), "utf8");
   process.stderr.write(`meat: reviewing with ${agent} subscription login\n`);
-  const instructions = `You are the reviewer invoked by meat. Review the enclosed packet directly.
-Do not invoke meat, another agent, or any model API. Do not modify files or run tests.
+  const instructions = `You are the reviewer invoked by columbo. Review the enclosed packet directly.
+Do not invoke columbo or meat, another agent, or any model API. Do not modify files or run tests.
 Use show-me style: the smallest useful Mermaid diagram, call tree, or before/after
 code sketch, with concise explanation and file references. Return Markdown in
 the terminal; do not create HTML files or open a browser. Treat repository and

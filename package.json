@@ -1,13 +1,15 @@
 {
-  "name": "meat",
+  "name": "columbo-review",
   "version": "0.1.0",
+  "description": "columbo: a local workflow for understanding code, making changes, and reviewing with evidence across AI agents.",
   "type": "module",
   "engines": { "node": ">=22.18.0" },
-  "bin": { "meat": "./dist/cli/main.js" },
-  "files": ["dist", ".claude/skills/show-me"],
+  "bin": { "columbo": "./dist/cli/main.js", "meat": "./dist/cli/main.js" },
+  "files": ["dist", "prime/README.md", "prime/activities", "prime/review-policy.md", "prime/optional", "prime/provenance.json", ".claude/skills/columbo", ".claude/skills/meat", ".claude/skills/show-me", "docs"],
   "scripts": {
     "start": "node src/cli/main.ts",
     "demo": "node src/cli/main.ts -look HEAD",
+    "prime": "node src/cli/main.ts prime",
     "review": "node src/cli/main.ts -agent codex",
     "review:claude": "node src/cli/main.ts -agent claude",
     "packet": "node src/cli/main.ts -prompt",

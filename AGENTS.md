@@ -1,8 +1,12 @@
-# Working on meat
+# Working on columbo (formerly Thread and Meat)
 
 Read `README.md` for usage. The active product is the TypeScript CLI in `src/`.
 The user's current instructions determine task scope; historical migration
 prompts are reference material, not an instruction to resume porting loops.
+The active workflow lives in `prime/README.md` and `prime/activities/`. Load only
+the activity relevant to the user request via `node src/cli/main.ts prime`.
+Prime prints instructions for the current agent; it is not a scheduler or hook.
+Use the current session by default and review substantial changes proportionally.
 
 ## Commands
 
@@ -12,7 +16,7 @@ prompts are reference material, not an instruction to resume porting loops.
 - Focused test: `node --test test/cli/prompt.test.ts` (substitute relevant file).
 - No-model smoke: `node dist/cli/main.js -look HEAD` or `-prompt HEAD`.
 - Put flags before revisions and use explicit `HEAD` in agent shells.
-- For another repo, keep its working directory and invoke meat by absolute
+- For another repo, keep its working directory and invoke columbo by absolute
   path. CLI relative paths are relative to the shell, not the skill.
 
 ## Find the right code
@@ -21,6 +25,9 @@ prompts are reference material, not an instruction to resume porting loops.
 |---|---|
 | Flags, Git sources, orchestration | `src/cli/main.ts`, `test/cli/main.test.ts` |
 | Offline views and agent packet | `src/cli/shape.ts`, `src/cli/prompt.ts` |
+| Portable JSON packet, plan compilation, agent discovery | `src/cli/bridge.ts`, `test/cli/bridge.test.ts` |
+| Prime workflow and columbo config aliases | `src/cli/workflow.ts`, `src/cli/brand.ts`, `test/cli/workflow.test.ts` |
+| Project-local skill installation | `src/cli/setup.ts`, `test/cli/setup.test.ts` |
 | Subscription CLI execution and login gates | `src/cli/agent.ts`, `test/cli/agent.test.ts` |
 | Terminal/JSON rendering, cache | `src/cli/render.ts`, `src/cli/cache.ts` |
 | Model loop and chunks | `src/meat/meat.ts`, `src/meat/chunk.ts` |
@@ -33,6 +40,8 @@ prompts are reference material, not an instruction to resume porting loops.
 
 ## Preserve these boundaries
 
+- Do not add comments to code, including inline, block, or documentation comments.
+  Put explanations in project documentation and use clear names in code.
 - Parsing, offsets, slicing, and budgets use `Uint8Array` bytes, not JS string
   indices. Decode only at text/API boundaries.
 - Preserve compiler invariants and frozen vectors. Do not regenerate expected
@@ -45,10 +54,17 @@ prompts are reference material, not an instruction to resume porting loops.
 - Keep stdout parseable for `-json` and `-prompt`; diagnostics go to stderr.
 - Go under `meat/` and `cmd/` is the migration reference. Change it only when
   the task concerns Go or parity. TypeScript-only features are valid.
-- `.claude/skills/meat/SKILL.md` is canonical; Codex/Grok copies are symlinks.
+- `.claude/skills/columbo/SKILL.md` is the canonical workflow skill;
+  Codex/Grok copies are symlinks. `.claude/skills/meat/SKILL.md` retains
+  compatible diff usage.
 - HumanLayer show-me is installed at `.claude/skills/show-me/SKILL.md` with the
   same discovery links. The meat skill defaults explanations to `-prompt` in
   the current agent session and routes useful visuals to show-me.
+- The package is `columbo-review`, with `columbo` as the preferred bin and
+  compatible `meat` bin names. Preserve `meat.packet` / `meat.compiled` wire
+  kinds, engine protocol, `MEAT_*` variables and default `~/.meat` cache.
+  `COLUMBO_MODEL` and `COLUMBO_CACHE` override `THREAD_*`, then `MEAT_*`, at the
+  CLI boundary, including empty values.
 
 ## Leave useful knowledge
 

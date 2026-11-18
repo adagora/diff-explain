@@ -55,6 +55,8 @@ import { stdinIsPiped, readAllStdin } from "./stdin.ts";
 import { formatDiffLook } from "./shape.ts";
 import { formatReviewPrompt } from "./prompt.ts";
 import { reviewWithAgent } from "./agent.ts";
+import { runBridge } from "./bridge.ts";
+import { applyColumboEnvironment } from "./brand.ts";
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -67,22 +69,40 @@ function goTrimSpaceString(s: string): string {
 // Go's `usage` constant (`cmd/meat/main.go:44-86`) plus TypeScript-only
 // `-look` (no-model shape/color/length view). The Go wording is otherwise
 // kept as the user-facing copy.
-export const usage = `meat — abridge a diff into a "reading diff"
+export const usage = `columbo — understand code, work on changes, and review with evidence
+Formerly Thread and Meat; the meat command remains a compatibility alias.
 
 Usage:
-  meat                 Summarize the most recent commit (HEAD) in the current git repo.
-  meat <revision>      Summarize a specific commit or revision (e.g. a sha, HEAD~3).
-  meat <range>         Diff across a commit range (e.g. sha1..sha2, main...HEAD).
-  meat -staged         Abridge the staged (index) changes: git diff --staged.
-  meat -w              Abridge the unstaged working-tree changes: git diff.
-  git show <sha> | meat   Abridge the diff piped on stdin.
-  git diff | meat         Abridge the working-tree diff piped on stdin.
-  meat -look              Look at the diff's shape, color, and length (no model).
-  git diff | meat -look   Same, from a piped unified diff.
+  columbo status --json          Inspect recorded intent, evidence freshness, and decisions.
+  columbo snapshot --file PATH   Hash source files for evidence.
+  columbo record --file JSON     Save an immutable local intent, evidence, or decision.
+  columbo setup                  Preview skill installation into the current project.
+  columbo setup --yes            Install project skills for Codex and Claude Code.
+  columbo prime                  Load the local workflow for your current agent session.
+  columbo prime understand       Trace the code relevant to a question.
+  columbo prime work             Implement, check, then review substantial changes.
+  columbo prime review           Review the actual diff and leave useful evidence.
+  columbo prime audit            Investigate the whole codebase and report coverage.
+  columbo prime converge         Fix evidenced issues in a bounded review cycle.
+  columbo capabilities --json    Discover commands, schemas, errors, and limits offline.
+  columbo guide                  Read the agent workflow (or: columbo help packet).
+  columbo packet HEAD            Export a JSON planning snapshot for any agent/model.
+  columbo compile --packet packet.json --plan plan.json
+                                        Compile a plan offline.
+  columbo abridge -json HEAD     Run the API-key abridger (alias for columbo -json HEAD).
+  columbo                        Summarize the most recent commit (HEAD) in the current git repo.
+  columbo <revision>             Summarize a specific commit or revision (e.g. a sha, HEAD~3).
+  columbo <range>                Diff across a commit range (e.g. sha1..sha2, main...HEAD).
+  columbo -staged                Abridge the staged (index) changes: git diff --staged.
+  columbo -w                     Abridge the unstaged working-tree changes: git diff.
+  git show <sha> | columbo       Abridge the diff piped on stdin.
+  git diff | columbo             Abridge the working-tree diff piped on stdin.
+  columbo -look                  Look at the diff's shape, color, and length (no model).
+  git diff | columbo -look       Same, from a piped unified diff.
 
-meat reads a unified diff (from stdin, from a named revision or range, or HEAD
-when stdin is a terminal), asks an LLM to drop everything not worth reading, and
-prints the abridged diff plus a one-line summary.
+columbo reads a unified diff (from stdin, from a named revision or range, or
+HEAD when stdin is a terminal), asks an LLM to drop everything not worth reading,
+and prints the abridged diff plus a one-line summary.
 
 -look skips the model: it prints the spatial add/remove/context shape, an
 explicit length (+added -deleted ~context), and the unified-diff text itself.
@@ -90,24 +110,26 @@ Use the same diff sources as abridge (stdin, revision, range, -staged, -w).
 
 Results are cached under ~/.meat keyed by the SHA of (rubric/compiler protocol +
 model + diff contents), so re-running on an unchanged diff is instant; editing
-the diff, switching models, or upgrading meat's rubric or compiler invariants
+the diff, switching models, or upgrading the rubric or compiler invariants
 recomputes.
 
 On an interactive terminal the diff is colored and paged like git show (using
 your git pager and color.diff config); piped/redirected output stays plain.
 
 Flags:
-  -model string   Model to use (default $MEAT_MODEL or a built-in default).
+  -model string   Model to use (default $COLUMBO_MODEL, then $MEAT_MODEL, then built-in).
   -no-cache       Ignore any cached result and recompute (still updates cache).
   -staged         Read the staged changes (git diff --staged).
   -w              Read the unstaged working-tree changes (git diff).
   -json           Emit the result as JSON on stdout (no color, no pager).
   -look           Print shape, color, and length of the diff, then the unified-diff text. No model, no API key.
   -prompt         Export a Markdown review packet for your existing agent. No model, no API key.
-  -agent string   Run a subscription CLI review: codex or claude (no meat API call).
+  -agent string   Run a subscription CLI review: codex or claude (no API-key call).
   -h, --help      Show this help.
 
 Environment:
+  COLUMBO_MODEL        Preferred model alias; overrides THREAD_MODEL, then MEAT_MODEL.
+  COLUMBO_CACHE        Preferred cache alias; overrides THREAD_CACHE, then MEAT_CACHE (empty disables).
   OPENAI_API_KEY       API key for OpenAI models (including the default).
   OPENAI_BASE_URL      Optional. Override the OpenAI API base URL.
   ANTHROPIC_API_KEY    API key for Claude models.
@@ -117,7 +139,7 @@ Environment:
   MEAT_MODEL           Optional. Default model id.
   MEAT_CACHE           Optional. Cache directory (default ~/.meat; empty disables).
 
-On an exe.dev VM with an attached "llm" integration, meat uses the managed
+On an exe.dev VM with an attached "llm" integration, columbo uses the managed
 LLM gateway automatically — no API key needed. Provider-specific API keys or
 base URLs override the gateway.
 `;
@@ -279,7 +301,7 @@ type ExecSyncError = Error & { readonly status?: number | null; readonly stderr?
  */
 export function git(...args: readonly string[]): Uint8Array {
   try {
-    const out = execFileSync("git", args as string[]);
+    const out = execFileSync("git", args as string[], { stdio: ["ignore", "pipe", "pipe"] });
     return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
   } catch (err) {
     const e = err as ExecSyncError;
@@ -495,7 +517,16 @@ function processWriter(stream: { readonly fd: number; write(text: string): boole
  * failure via `fatal` — Go's three-way convention (Invariants).
  */
 export async function main(): Promise<void> {
-  const parsed = parseFlags(process.argv.slice(2));
+  applyColumboEnvironment(process.env);
+  let argv = process.argv.slice(2);
+  const bridgeExit = await runBridge(argv, readDiff);
+  if (bridgeExit !== null) {
+    process.exitCode = bridgeExit;
+    return;
+  }
+  if (argv[0] === "abridge") argv = argv.slice(1);
+  if (argv.length === 1 && argv[0] === "help") argv = ["--help"];
+  const parsed = parseFlags(argv);
   if (parsed.kind === "help") {
     process.stderr.write(usage);
     process.exit(0);

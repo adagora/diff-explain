@@ -6,6 +6,11 @@ license: Apache-2.0
 
 # meat
 
+This is columbo's compatibility skill for the existing Meat diff commands.
+For the Understand / Work / Review workflow, use the sibling
+[columbo skill](../columbo/SKILL.md) and `columbo prime`. The `meat` bin remains an
+alias; existing diff formats and compiler rules are unchanged.
+
 Run this repo's meat CLI on the user's actual diff. Choose compiled abridging,
 offline inspection, or an agent explanation according to their intent. Do not
 present an agent-authored explanation as meat's compiled reading diff.
@@ -34,6 +39,10 @@ From this checkout, use Node 22.18+ (recommended 24) on the CLI entry:
 
 - Source: `node src/cli/main.ts`
 - Built (after `npm run build`): `node dist/cli/main.js`
+
+For an installed npm package, use `meat` on PATH. Discover supported commands
+with `meat capabilities --json` and the workflow with `meat guide`; do not assume
+the source checkout exists. The npm package includes this skill and show-me.
 
 Run in the git repo whose diff the user asked about. For another repo, resolve
 the meat checkout first and use its absolute CLI path. Relative paths below
@@ -94,3 +103,31 @@ output. For handoffs, see `docs/agent-workflow.md`.
 
 **Done when** the user has the requested output or explanation, with its scope
 and any limitations clear.
+
+## 6. Compile a reading diff in the current agent (when requested)
+
+For compiled output using the current agent, run `meat packet HEAD` (or the
+resolved Node launch line plus `packet`) and read its JSON reply. Use the actual
+requested revision/range, `--staged`, `--worktree`, or explicit `--stdin`.
+`packet` defaults to HEAD even in agent shells; options may follow the revision.
+It makes no model call. Save the reply unchanged as packet.json in a suitable
+artifact directory. Read `data.instructions`, `data.numbered_diff`, move hints,
+and `data.plan_schema`. Write one JSON plan using `data.plan_template`, with
+the exact input hash and original diff line coordinates. Do not invent source.
+
+Run `meat compile --packet packet.json --plan plan.json`. On rejection, inspect
+`error.kind`, `error.message`, and `error.next_action`, then repair the plan and
+retry against the same snapshot. Do not relabel an old plan with another hash.
+Return `data.smart_diff`, summary, statistics, and the original input identity.
+Compilation proves transformation validity, not semantic completeness, correctness,
+or test execution. The full original diff remains necessary for correctness
+review; imports are omitted automatically. Source context is not snapshotted.
+
+API-key abridging remains available via `meat abridge -json -model MODEL HEAD`
+or the legacy invocation. It drives the model/tool/compile loop automatically.
+Keep API access explicit and separate from subscription login. Never print keys.
+Offline packets have a 400 KiB UTF-8 input cap; narrow the scope instead of
+silently truncating. New commands use a JSON envelope; legacy API JSON is unchanged.
+
+**Done when** compilation succeeded for the requested snapshot, or the user has
+the precise rejection and an honest account of what could not be compiled.
